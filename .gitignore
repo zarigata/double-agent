@@ -1,0 +1,38 @@
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Runtime state
+data/
+state/
+cache/
+artifacts/
+workspaces/
+*.db
+*.db-shm
+*.db-wal
+
+# Logs and temporary files
+*.log
+tmp/
+.tmp/
+
+# Build output — future implementation
+dist/
+build/
+coverage/
+node_modules/
+vendor/
+
