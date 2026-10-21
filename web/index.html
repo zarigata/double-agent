@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#07111f" />
+    <meta
+      name="description"
+      content="Double Agent orchestrates disposable AI workstations, GPU workloads, containers, and virtual machines on your local infrastructure."
+    />
+    <title>Double Agent — Local infrastructure for AI agents</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main" data-i18n="accessibility.skip">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Double Agent home">
+        <img src="../assets/double-agent-logo.png" alt="" width="48" height="48" />
+        <span>Double Agent</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#capabilities" data-i18n="nav.capabilities">Capabilities</a>
+        <a href="#architecture" data-i18n="nav.architecture">Architecture</a>
+        <a href="#security" data-i18n="nav.security">Security</a>
+      </nav>
+      <form class="language-form" aria-label="Language selection">
+        <label for="language" data-i18n="language.label">Language</label>
+        <select id="language" name="language">
+          <option value="en">English</option>
+          <option value="pt-BR">Português do Brasil</option>
+        </select>
+      </form>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <p class="eyebrow" data-i18n="hero.eyebrow">SELF-HOSTED · MCP-NATIVE · GPU-AWARE</p>
+          <h1 data-i18n="hero.title">Give every AI agent a computer built for the task.</h1>
+          <p class="hero-description" data-i18n="hero.description">
+            Double Agent turns your Linux server into secure, disposable workstations with CPU,
+            NVIDIA, AMD, Intel, Linux, Windows, Blender, browsers, and development tools.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="../README.md" data-i18n="hero.readDocs">Read the specification</a>
+            <a class="button secondary" href="#architecture" data-i18n="hero.seeHow">See how it works</a>
+          </div>
+          <dl class="stats" aria-label="Project highlights">
+            <div><dt data-i18n="stats.modesValue">3</dt><dd data-i18n="stats.modesLabel">operation modes</dd></div>
+            <div><dt data-i18n="stats.vendorsValue">3</dt><dd data-i18n="stats.vendorsLabel">GPU vendors</dd></div>
+            <div><dt data-i18n="stats.retainedValue">0</dt><dd data-i18n="stats.retainedLabel">VMs retained by default</dd></div>
+          </dl>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <img src="../assets/double-agent-hero.png" alt="" />
+        </div>
+      </section>
+
+      <section class="section" id="capabilities">
+        <p class="eyebrow" data-i18n="capabilities.eyebrow">ONE REQUEST, THE RIGHT ENVIRONMENT</p>
+        <h2 data-i18n="capabilities.title">From intent to verified artifacts</h2>
+        <div class="card-grid">
+          <article class="card"><span>01</span><h3 data-i18n="capabilities.imagesTitle">Generate images</h3><p data-i18n="capabilities.imagesBody">Schedule a proven GPU backend and preserve prompts, seeds, models, and hashes.</p></article>
+          <article class="card"><span>02</span><h3 data-i18n="capabilities.blenderTitle">Build 3D assets</h3><p data-i18n="capabilities.blenderBody">Run Blender headlessly or open a temporary desktop, then export GLB, FBX, and previews.</p></article>
+          <article class="card"><span>03</span><h3 data-i18n="capabilities.testTitle">Build and test</h3><p data-i18n="capabilities.testBody">Create clean Linux or Windows environments and return reports, binaries, and logs.</p></article>
+          <article class="card"><span>04</span><h3 data-i18n="capabilities.browseTitle">Use a browser</h3><p data-i18n="capabilities.browseBody">Run isolated browser workflows with authenticated viewing and controlled downloads.</p></article>
+        </div>
+      </section>
+
+      <section class="section architecture" id="architecture">
+        <div>
+          <p class="eyebrow" data-i18n="architecture.eyebrow">TWO FACES, ONE CONTROL PLANE</p>
+          <h2 data-i18n="architecture.title">The client reasons. The server executes.</h2>
+          <p data-i18n="architecture.body">Use Double Agent as a pure executor, delegate an objective to its optional internal AI, or combine both approaches.</p>
+        </div>
+        <ol class="flow">
+          <li><strong data-i18n="architecture.step1Title">Discover</strong><span data-i18n="architecture.step1Body">The client finds proven capabilities over MCP.</span></li>
+          <li><strong data-i18n="architecture.step2Title">Provision</strong><span data-i18n="architecture.step2Body">The scheduler selects a container, VM, CPU, or GPU.</span></li>
+          <li><strong data-i18n="architecture.step3Title">Execute</strong><span data-i18n="architecture.step3Body">The isolated environment performs the work.</span></li>
+          <li><strong data-i18n="architecture.step4Title">Export</strong><span data-i18n="architecture.step4Body">The agent receives verified artifacts and metadata.</span></li>
+          <li><strong data-i18n="architecture.step5Title">Destroy</strong><span data-i18n="architecture.step5Body">Resources are released; only approved results remain.</span></li>
+        </ol>
+      </section>
+
+      <section class="section security" id="security">
+        <div class="security-mark" aria-hidden="true">⌾</div>
+        <div>
+          <p class="eyebrow" data-i18n="security.eyebrow">POWERFUL INSIDE, ISOLATED FROM THE HOST</p>
+          <h2 data-i18n="security.title">Root in the instance is not root on the server.</h2>
+          <p data-i18n="security.body">Runtime sockets, host files, unassigned devices, raw secrets, and other users' workloads stay outside the agent boundary.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p data-i18n="footer.status">Architecture preview · Not yet production software</p>
+      <p><span data-i18n="footer.language">English is canonical. Human-facing surfaces are multilingual.</span></p>
+    </footer>
+    <div id="language-status" class="sr-only" role="status" aria-live="polite"></div>
+  </body>
+</html>

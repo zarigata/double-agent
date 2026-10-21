@@ -1,37 +1,30 @@
-# Arquitetura
+# Architecture
 
-## 1. Visão geral
+## Overview
 
-O Double Agent separa claramente o plano de controle, o plano de execução e o
-plano de dados. Essa separação permite começar em um nó e acrescentar workers
-ou Kubernetes sem alterar a interface MCP.
+Double Agent separates control, execution, and data planes. This allows the
+product to begin on one node and later add workers or Kubernetes without
+changing its MCP contract.
 
 ```mermaid
 flowchart LR
-    C[Cliente de IA<br/>Claude Code, Cursor, Codex]
-    B[Bridge local<br/>stdio para HTTPS]
-    H[Usuário<br/>Web UI]
-    D[mDNS<br/>descoberta LAN]
-
-    C -->|MCP Streamable HTTP| G
-    C -->|MCP stdio| B
+    C[AI client] -->|MCP Streamable HTTP| G
+    C -->|MCP stdio| B[Local bridge]
     B -->|HTTPS| G
-    H -->|HTTPS| G
-    D -. anuncia .-> B
-
-    subgraph DA[Double Agent no host Linux]
-      G[Gateway MCP/API]
-      A[Autenticação e política]
-      J[Orquestrador de jobs]
-      S[Scheduler de recursos]
-      W[Runtime de IA opcional]
-      T[Catálogo de templates e wiki]
-      R[Drivers de runtime]
+    H[Web UI] -->|HTTPS| G
+    D[mDNS discovery] -.-> B
+    subgraph Host[Double Agent Linux host]
+      G[MCP and API gateway]
+      A[Authentication and policy]
+      J[Job orchestrator]
+      S[Resource scheduler]
+      W[Optional AI runtime]
+      T[Template catalog and docs]
+      R[Runtime drivers]
       DB[(SQLite)]
-      SE[(Cofre de segredos)]
-      CA[(Cache de imagens e modelos)]
-      AR[(Artefatos exportados)]
-
+      SE[(Secret vault)]
+      CA[(Image and model cache)]
+      AR[(Artifacts)]
       G --> A --> J
       J --> S --> R
       J <--> W
@@ -41,239 +34,127 @@ flowchart LR
       R --> CA
       J --> AR
     end
-
-    R --> DC[Containers Linux<br/>Docker/containerd]
-    R --> VM[VMs Linux/Windows<br/>libvirt + QEMU/KVM]
-    DC --> GPU[CPU / NVIDIA / AMD / Intel]
-    VM --> VFIO[CPU / VFIO experimental]
+    R --> DC[Linux containers]
+    R --> VM[Linux and Windows VMs]
+    DC --> GPU[CPU, NVIDIA, AMD, Intel]
+    VM --> VFIO[CPU or experimental VFIO]
 ```
 
-## 2. Componentes
+## `double-agentd`
 
-### `double-agentd`
+The daemon should be written in Go to produce a compact static binary, embed
+the Web UI, integrate with Docker and libvirt, serve HTTP and mDNS, and simplify
+one-line installation.
 
-Daemon privilegiado apenas no que for necessário para administrar runtimes e
-dispositivos. Recomendação: Go para produzir binário estático, integrar APIs de
-Docker/libvirt, servir HTTP e mDNS e simplificar a instalação.
+Responsibilities:
 
-Responsabilidades:
+- CPU, memory, storage, and GPU inventory;
+- MCP gateway and Web API;
+- authentication, authorization, quotas, and policy;
+- scheduling, lifecycle, and reconciliation;
+- container and VM runtime adapters;
+- metadata, audit, secrets, caches, and artifacts;
+- optional internal AI supervision;
+- LAN discovery.
 
-- inventário de CPU, memória, disco e GPU;
-- gateway MCP e API da Web UI;
-- autenticação e autorização;
-- scheduler e lifecycle;
-- drivers de containers e VMs;
-- metadados, auditoria, segredos e cache;
-- supervisão da IA interna opcional;
-- anúncio mDNS.
+The daemon never runs arbitrary user commands directly on the host. Execution
+occurs inside a runtime instance through a guest agent or runtime `exec` API.
 
-O daemon não executa diretamente comandos de usuário no host. Toda execução
-ocorre numa instância por meio de um agente de guest ou `exec` do runtime.
+## Web UI
 
-### Web UI
+A TypeScript/React application will be embedded in the daemon. The MVP screens
+cover bootstrap, hardware health, jobs, sessions, instances, consoles,
+templates, artifacts, LLM providers, users, keys, quotas, secrets, audit, and
+diagnostics. English is the fallback language; catalogs provide localization.
 
-Aplicação estática em TypeScript/React incorporada ao binário do daemon. Isso
-mantém a instalação em um pacote e evita um servidor Node separado.
+## Network surface
 
-Telas do MVP:
+| Path | Purpose |
+|---|---|
+| `/mcp` | Remote MCP transport |
+| `/api/v1/*` | Private API for Web UI and CLI |
+| `/artifacts/*` | Authenticated temporary downloads |
+| `/desktop/*` | Authenticated desktop proxy or connection data |
+| `/docs` | Human documentation |
 
-- login e bootstrap;
-- dashboard de CPU, RAM, disco e GPUs;
-- jobs e sessões;
-- instâncias, consoles e destruição;
-- templates e validações;
-- artefatos;
-- provedores/LLMs e modelos locais;
-- usuários, chaves, cotas e segredos;
-- eventos de auditoria e diagnóstico.
+MCP is the agent interface. The private REST API is not a replacement for MCP.
 
-### Gateway MCP/API
+## Jobs and scheduler
 
-O mesmo servidor HTTPS publica:
+Every long-running operation creates a `job_id`. A job records intent,
+requester, template, resources, logs, artifacts, cost, and state. The scheduler
+enforces host reserves, exclusive device locks, compatible GPU sharing, client
+quotas, priorities, and template/runtime/hardware compatibility.
 
-- `/mcp`: MCP remoto;
-- `/api/v1/*`: API privada usada pela Web UI e CLI;
-- `/artifacts/*`: downloads temporários e autenticados;
-- `/desktop/*`: proxy ou informações de conexão para desktop;
-- metadados de autorização e Server Card;
-- documentação humana em `/docs`.
+The MVP has one node, but domain objects include `node_id` from the start.
 
-MCP é a interface de agentes; a API REST não deve ser tratada como substituta
-do protocolo.
-
-### Orquestrador de jobs
-
-Toda operação demorada cria um `job_id`. O job registra intenção, solicitante,
-template, recursos, logs, artefatos, custo e estado. O transporte MCP atual é
-tratado como stateless; o identificador explícito mantém continuidade.
-
-### Scheduler
-
-Seleciona CPU, RAM, disco, runtime e dispositivos. No MVP há apenas um nó, mas
-o contrato recebe `node_id` desde o início.
-
-Regras mínimas:
-
-- nenhuma alocação excede a reserva do host;
-- GPU inteira fica bloqueada quando atribuída por passthrough;
-- containers podem compartilhar GPU somente quando o driver permite e a
-  política autoriza;
-- prioridade e cotas evitam que um cliente ocupe todo o host;
-- jobs aguardam em fila quando recursos não estão disponíveis;
-- scheduler conhece compatibilidade entre template, runtime, arquitetura e
-  backend de GPU.
-
-### Drivers de runtime
+## Runtime contract
 
 ```go
 type Runtime interface {
-    Prepare(ctx, Recipe) error
-    Create(ctx, InstanceSpec) (Instance, error)
-    Start(ctx, InstanceID) error
-    Exec(ctx, InstanceID, ExecRequest) (ExecHandle, error)
-    Console(ctx, InstanceID) (ConsoleEndpoint, error)
-    CopyIn(ctx, InstanceID, ArtifactRef, GuestPath) error
-    CopyOut(ctx, InstanceID, GuestPath) (ArtifactRef, error)
-    Stop(ctx, InstanceID, GracePeriod) error
-    Destroy(ctx, InstanceID) error
-    Inspect(ctx, InstanceID) (ObservedState, error)
+    Prepare(ctx context.Context, recipe Recipe) error
+    Create(ctx context.Context, spec InstanceSpec) (Instance, error)
+    Start(ctx context.Context, id InstanceID) error
+    Exec(ctx context.Context, id InstanceID, req ExecRequest) (ExecHandle, error)
+    Console(ctx context.Context, id InstanceID) (ConsoleEndpoint, error)
+    CopyIn(ctx context.Context, id InstanceID, src ArtifactRef, dst GuestPath) error
+    CopyOut(ctx context.Context, id InstanceID, src GuestPath) (ArtifactRef, error)
+    Stop(ctx context.Context, id InstanceID, grace time.Duration) error
+    Destroy(ctx context.Context, id InstanceID) error
+    Inspect(ctx context.Context, id InstanceID) (ObservedState, error)
 }
 ```
 
-Implementações planejadas:
+Planned implementations are Docker first, libvirt/QEMU/KVM second,
+Kubernetes later, and a possible physical Apple worker in the future.
 
-1. `docker`: backend inicial para Linux;
-2. `libvirt`: Linux/Windows em QEMU/KVM;
-3. `kubernetes`: backend posterior;
-4. `apple-worker`: futuro backend remoto para Macs físicos.
+## Guest agent
 
-### Guest Agent
+VMs use a small authenticated guest agent for commands, files, and telemetry.
+The preferred channel is `virtio-serial` or vsock, never an unauthenticated LAN
+port. Containers use runtime APIs and a minimal supervisor.
 
-Pequeno agente dentro das VMs para execução, arquivos e telemetria. Deve usar
-canal autenticado e específico da instância, preferencialmente `virtio-serial`
-ou vsock em vez de uma porta aberta na LAN. Containers usam API do runtime e
-um supervisor mínimo.
+## Optional AI runtime
 
-### Runtime de IA opcional
+The internal AI is not on the pure-executor critical path. Adapters initially
+target OpenAI-compatible local endpoints and hosted providers. It receives only
+job-scoped tools and opaque secret references. Audit records distinguish client
+actions from decisions made by the internal AI.
 
-Não faz parte do caminho crítico do executor puro. Possui adaptadores:
+## Data classes
 
-- OpenAI-compatible para Ollama, vLLM, LM Studio e provedores compatíveis;
-- OpenAI hospedado;
-- adaptadores nativos adicionais depois do primeiro vertical slice.
+1. **Small state:** SQLite, configuration, sessions, recipes, and audit events.
+2. **Rebuildable cache:** OCI images, packages, and models.
+3. **User data:** inputs and exported artifacts with retention policies.
 
-Ele recebe ferramentas limitadas ao job e nunca credenciais brutas. O
-orquestrador registra quais decisões vieram da IA interna e quais vieram do
-cliente externo.
+Instance disks are ephemeral and excluded from backups by default.
 
-## 3. Planos de controle, execução e dados
+## Core entities
 
-### Plano de controle
-
-Web UI, MCP, autenticação, scheduler, jobs, metadados e auditoria. Precisa
-continuar operacional mesmo se Docker ou libvirt falharem.
-
-### Plano de execução
-
-Containers, VMs, processos, desktops e GPU. Pode ser reiniciado e reconciliado
-com o estado desejado no banco.
-
-### Plano de dados
-
-Três classes distintas:
-
-1. **estado pequeno:** SQLite, configurações, sessões, receitas e auditoria;
-2. **cache reconstruível:** imagens OCI, pacotes e modelos;
-3. **dados do usuário:** inputs e artefatos exportados com política de retenção.
-
-Discos de instância são efêmeros e não entram em backup por padrão.
-
-## 4. Modelo de domínio
-
-| Entidade | Propósito |
+| Entity | Purpose |
 |---|---|
-| `User` | Administrador ou usuário local |
-| `ApiKey` | Credencial revogável com escopos e cotas |
-| `Node` | Host de execução; um no MVP |
-| `Device` | CPU, GPU, armazenamento ou capacidade detectada |
-| `Template` | Definição versionada de ambiente e capacidades |
-| `Recipe` | Plano resolvido e reproduzível para uma execução |
-| `Session` | Continuidade lógica entre cliente e objetivos |
-| `Job` | Operação assíncrona observável |
-| `Instance` | Container ou VM concreta e descartável |
-| `Artifact` | Arquivo exportado e controlado |
-| `Secret` | Valor cifrado referenciado por identificador |
-| `AuditEvent` | Registro append-only de ação relevante |
+| `User` | Local administrator or user |
+| `ApiKey` | Revocable credential with scopes and quotas |
+| `Node` | Execution host |
+| `Device` | Discovered and tested capability |
+| `Template` | Versioned environment definition |
+| `Recipe` | Resolved, reproducible execution plan |
+| `Session` | Logical continuity between requests |
+| `Job` | Observable asynchronous operation |
+| `Instance` | Concrete disposable container or VM |
+| `Artifact` | Controlled exported file |
+| `Secret` | Encrypted value referenced by identifier |
+| `AuditEvent` | Security and operational evidence |
 
-## 5. Máquinas de estado
+## State machines
 
-### Job
+Jobs progress through `queued → preparing → running → exporting → completed`,
+with `failed`, `canceled`, and `expired` terminal paths. Instances progress
+through `requested → preparing → starting → ready → stopping → destroyed`.
+Reconciliation must safely resume or clean up intermediate states after restart.
 
-```text
-queued -> planning -> preparing -> running -> exporting -> succeeded
-   |          |           |           |            |
-   +----------+-----------+-----------+------------+-> failed
-                          `---------------------------> cancelled
-```
+## Deployment evolution
 
-### Instância
-
-```text
-requested -> provisioning -> ready -> busy -> stopping -> stopped -> deleting -> deleted
-                    |          |       |          |
-                    `----------+-------+----------+-> error
-```
-
-Estados são idempotentes. Após reinício, um reconciliador compara banco e
-runtime, marca recursos órfãos e conclui destruições pendentes.
-
-## 6. Fluxos principais
-
-### Executor puro
-
-1. cliente chama `instance.create`;
-2. servidor valida chave, cotas e template;
-3. scheduler reserva recursos;
-4. runtime cria a instância;
-5. cliente usa `instance.exec` e `artifact.import`;
-6. cliente exporta resultados;
-7. servidor destrói no fim do TTL.
-
-### Delegação para IA interna
-
-1. cliente chama `task.delegate` com objetivo e limites;
-2. servidor cria job e contexto de ferramentas;
-3. IA interna seleciona template ou cria receita derivada;
-4. cada ação passa pelas mesmas políticas do executor puro;
-5. progresso e logs ficam disponíveis;
-6. servidor retorna resumo estruturado e artefatos.
-
-### Intervenção humana
-
-1. job pede login, seleção visual ou confirmação;
-2. estado vira `input_required`;
-3. Web UI oferece desktop temporário;
-4. usuário conclui a etapa;
-5. job retoma sem expor a senha ao modelo quando possível.
-
-## 7. Concorrência
-
-- fila persistente no SQLite no MVP;
-- workers internos com leases e heartbeat;
-- locks de dispositivo para GPU e passthrough;
-- limites por usuário e por host;
-- cancelamento cooperativo, seguido de encerramento forçado após grace period;
-- idempotency key em chamadas de criação para evitar instâncias duplicadas.
-
-## 8. Evolução para cluster
-
-O daemon único será dividido logicamente desde o início:
-
-```text
-gateway/scheduler -> worker protocol -> node agent -> runtime
-```
-
-No MVP, o worker protocol pode ser uma chamada interna. No cluster, torna-se
-mTLS entre o controlador e agentes de nó. Kubernetes implementa `Runtime`, mas
-não substitui sessões, políticas, artefatos ou MCP.
-
+The first release is a single Linux node with SQLite and local storage. A later
+multi-node design introduces a node agent, mTLS, object storage, distributed
+scheduling, and an external database without changing tool semantics.

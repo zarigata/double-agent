@@ -1,0 +1,56 @@
+{
+  "accessibility": { "skip": "Ir para o conteúdo" },
+  "language": { "label": "Idioma", "changed": "Idioma alterado para português do Brasil." },
+  "nav": { "capabilities": "Capacidades", "architecture": "Arquitetura", "security": "Segurança" },
+  "hero": {
+    "eyebrow": "AUTO-HOSPEDADO · NATIVO MCP · PRONTO PARA GPU",
+    "title": "Dê a cada agente de IA um computador feito para a tarefa.",
+    "description": "O Double Agent transforma seu servidor Linux em estações de trabalho seguras e descartáveis com CPU, NVIDIA, AMD, Intel, Linux, Windows, Blender, navegadores e ferramentas de desenvolvimento.",
+    "readDocs": "Ler a especificação",
+    "seeHow": "Ver como funciona"
+  },
+  "stats": {
+    "modesValue": "3",
+    "modesLabel": "modos de operação",
+    "vendorsValue": "3",
+    "vendorsLabel": "fabricantes de GPU",
+    "retainedValue": "0",
+    "retainedLabel": "VMs mantidas por padrão"
+  },
+  "capabilities": {
+    "eyebrow": "UM PEDIDO, O AMBIENTE CERTO",
+    "title": "Da intenção a artefatos verificados",
+    "imagesTitle": "Gerar imagens",
+    "imagesBody": "Selecione um backend de GPU comprovado e preserve prompts, seeds, modelos e hashes.",
+    "blenderTitle": "Criar assets 3D",
+    "blenderBody": "Execute o Blender sem interface ou abra um desktop temporário e exporte GLB, FBX e previews.",
+    "testTitle": "Compilar e testar",
+    "testBody": "Crie ambientes Linux ou Windows limpos e retorne relatórios, binários e logs.",
+    "browseTitle": "Usar um navegador",
+    "browseBody": "Execute fluxos de navegador isolados com visualização autenticada e downloads controlados."
+  },
+  "architecture": {
+    "eyebrow": "DUAS FACES, UM PLANO DE CONTROLE",
+    "title": "O cliente raciocina. O servidor executa.",
+    "body": "Use o Double Agent como executor puro, delegue um objetivo à IA interna opcional ou combine as duas abordagens.",
+    "step1Title": "Descobrir",
+    "step1Body": "O cliente encontra capacidades comprovadas via MCP.",
+    "step2Title": "Provisionar",
+    "step2Body": "O scheduler seleciona container, VM, CPU ou GPU.",
+    "step3Title": "Executar",
+    "step3Body": "O ambiente isolado realiza o trabalho.",
+    "step4Title": "Exportar",
+    "step4Body": "O agente recebe artefatos e metadados verificados.",
+    "step5Title": "Destruir",
+    "step5Body": "Os recursos são liberados; apenas os resultados aprovados permanecem."
+  },
+  "security": {
+    "eyebrow": "PODEROSO POR DENTRO, ISOLADO DO HOST",
+    "title": "Root na instância não é root no servidor.",
+    "body": "Sockets de runtime, arquivos do host, dispositivos não alocados, segredos brutos e workloads de outros usuários ficam fora do limite do agente."
+  },
+  "footer": {
+    "status": "Preview de arquitetura · Ainda não é software de produção",
+    "language": "O inglês é canônico. As interfaces humanas são multilíngues."
+  }
+}

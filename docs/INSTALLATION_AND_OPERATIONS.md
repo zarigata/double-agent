@@ -1,131 +1,100 @@
-# Instalação e operação
+# Installation and operations
 
-## 1. Experiência desejada
+## Supported host profile
 
-O usuário executa uma linha em um host Linux limpo:
+The initial target is a dedicated x86_64 Linux server or workstation with
+hardware virtualization available. Ubuntu LTS is the first supported platform;
+other distributions follow after automated installation tests.
+
+Minimum development profile:
+
+- 4 CPU cores, 16 GB RAM, and 100 GB free storage;
+- systemd and cgroups v2;
+- Docker Engine for container workloads;
+- KVM/libvirt for VM workloads;
+- optional NVIDIA, AMD, or Intel GPU with a compatible host driver.
+
+## One-line installation goal
 
 ```bash
-curl -fsSL https://<dominio-oficial>/install.sh | sudo bash
+curl -fsSL https://install.double-agent.dev | sudo sh
 ```
 
-O domínio é propositalmente um placeholder. Nenhum instalador deve ser
-publicado antes de existir release assinado e documentação de segurança.
+The convenience command downloads a versioned installer. The installer must
+verify signatures/checksums before executing the payload, display the selected
+release and source, and support an offline/manual package path.
 
-O script é somente um bootstrap:
+## Installation stages
 
-1. detecta distribuição, arquitetura e virtualização;
-2. mostra o que será instalado e pede confirmação;
-3. adiciona repositório assinado ou baixa pacote com checksum/assinatura;
-4. instala `double-agent`, unidade systemd e dependências selecionadas;
-5. executa setup interativo no TTY;
-6. configura firewall apenas para a sub-rede escolhida;
-7. inicia o daemon;
-8. executa diagnóstico e mostra URL/fingerprint.
+1. verify OS, architecture, free resources, systemd, cgroups, and virtualization;
+2. create a locked `double-agent` service account and data directories;
+3. install the signed daemon, CLI, embedded Web UI, and service units;
+4. prompt for the first administrator username and password;
+5. generate a local CA, server certificate, and recovery material;
+6. detect Docker, KVM/libvirt, and GPU devices;
+7. ask before installing or changing any runtime/driver dependency;
+8. run capability smoke tests;
+9. start the service and print URL, fingerprint, and next steps.
 
-Para ambientes que não aceitam `curl | bash`, oferecer `.deb`, `.rpm`, arquivo
-tar assinado e instruções equivalentes.
+Unattended installation accepts values through a root-readable configuration
+file or secret input—not plaintext command-line flags that leak into history.
 
-## 2. Host suportado no MVP
-
-Recomendação inicial:
-
-- Ubuntu Server 24.04 LTS x86_64;
-- systemd e cgroups v2;
-- 4 cores, 16 GiB RAM e 100 GiB livres mínimos recomendados;
-- Docker Engine;
-- QEMU/KVM + libvirt para VMs;
-- rede local com mDNS ou conexão manual por IP/DNS;
-- GPU opcional.
-
-Debian e outras distribuições entram após estabilizar o primeiro vertical slice.
-ARM64 pode executar CPU/containers, mas precisa de templates próprios e não deve
-ser prometido no primeiro release sem testes.
-
-## 3. Setup interativo
-
-Perguntas:
-
-1. nome do servidor;
-2. interface/sub-rede LAN permitida;
-3. usuário administrador;
-4. senha e confirmação, lidas sem eco;
-5. diretório/volume de dados;
-6. quotas reservadas ao host;
-7. habilitar Docker;
-8. habilitar libvirt/KVM;
-9. política de atualização;
-10. telemetria — desabilitada por padrão;
-11. IA interna agora, depois ou nunca.
-
-O instalador não pergunta chave de API em argumento de shell. Segredos são
-adicionados depois na Web UI por conexão TLS.
-
-## 4. Drivers de GPU
-
-O instalador não deve substituir silenciosamente drivers funcionais. Fluxo:
-
-1. detectar PCI IDs, kernel modules e runtimes;
-2. executar probes sem modificar;
-3. classificar cada GPU como `ready`, `driver_missing`, `runtime_missing`,
-   `unsupported` ou `needs_reboot`;
-4. oferecer comando/ação específica para o host;
-5. pedir autorização antes de instalar driver/runtime;
-6. reiniciar somente com confirmação;
-7. executar smoke-test em container.
-
-### NVIDIA
-
-Validar driver no host e NVIDIA Container Toolkit/CDI. O daemon deve selecionar
-dispositivo individual, não expor `all` por padrão.
-
-### AMD
-
-Validar suporte ROCm da GPU/kernel, `/dev/kfd`, render node e grupos. Nem toda
-GPU AMD suporta toda versão ROCm; capabilities devem refletir o teste real.
-
-### Intel
-
-Validar render node `/dev/dri`, driver kernel, Level Zero/OpenCL/OpenVINO e
-acesso do usuário de serviço. O primeiro servidor Intel define a matriz concreta
-de versões.
-
-## 5. Serviços
+## Filesystem layout
 
 ```text
-double-agent.service        daemon e Web UI
-double-agent-gc.timer       coleta de instâncias/artefatos expirados
-double-agent-update.timer   apenas checagem; instalação depende da política
+/usr/bin/double-agent
+/usr/bin/double-agentd
+/etc/double-agent/config.yaml
+/etc/double-agent/pki/
+/var/lib/double-agent/state/
+/var/lib/double-agent/cache/
+/var/lib/double-agent/artifacts/
+/var/lib/double-agent/instances/
+/var/log/double-agent/
 ```
 
-Docker/libvirt continuam serviços separados. O daemon usa APIs locais com
-permissão mínima possível.
+Permissions isolate service data from ordinary host users. Instance workspaces
+and artifacts have separate quotas and mount policies.
 
-## 6. Portas e nomes
+## Hardware diagnostics
 
-| Uso | Padrão proposto | Exposição |
+`double-agent doctor --json` reports each capability as `ready`, `degraded`,
+`driver_missing`, `runtime_missing`, `unsupported`, `untested`, or
+`needs_reboot`. It explains the evidence and exact action required. Driver or
+runtime installation always requires administrator approval and a post-change
+smoke test.
+
+## Services
+
+```text
+double-agent.service        daemon, MCP, API, and Web UI
+double-agent-gc.timer       expired instance and artifact collection
+double-agent-update.timer   update check only
+```
+
+Docker and libvirt remain independent system services. The daemon receives the
+minimum permissions needed to call their local APIs.
+
+## Default ports
+
+| Use | Proposed default | Exposure |
 |---|---:|---|
-| Web UI/API/MCP HTTPS | 7443/TCP | LAN escolhida |
-| mDNS | 5353/UDP | LAN/multicast |
-| VNC/RDP do guest | dinâmica/interna | nunca diretamente na LAN |
-| Guest agent | vsock/virtio/private | host/guest somente |
+| Web UI, API, MCP | 7443/TCP | selected LAN interfaces |
+| mDNS | 5353/UDP | local multicast |
+| Guest VNC/RDP | dynamic/internal | never directly on LAN |
+| Guest agent | vsock/virtio/private | host-to-guest only |
 
-O usuário pode fornecer DNS normal. `.local` depende de mDNS e pode conflitar
-com políticas da rede; o CLI sempre aceita IP/hostname manual.
+Manual IP/hostname configuration always remains available where multicast is
+blocked or `.local` naming conflicts with network policy.
 
-## 7. Certificados e pairing
+## Certificates and pairing
 
-No bootstrap:
+Bootstrap generates a local CA and server certificate with known hostnames/IPs
+as SANs. The installer displays a SHA-256 fingerprint. The bridge pairs with a
+short-lived code and pins the CA/fingerprint. There is no permanent “ignore TLS”
+mode. Operators may replace local PKI with their own reverse proxy/certificates.
 
-- gerar CA local e certificado do servidor;
-- incluir IPs/hostnames conhecidos como SAN;
-- mostrar SHA-256 fingerprint;
-- bridge faz pairing com código curto e fixa a CA/fingerprint;
-- navegador recebe instrução para confiar na CA ou usa reverse proxy com
-  certificado administrado pelo usuário.
-
-Nunca oferecer botão “ignorar TLS” permanente.
-
-## 8. CLI administrativa
+## Administrative CLI
 
 ```text
 double-agent status
@@ -146,88 +115,32 @@ double-agent uninstall
 double-agent mcp-bridge ...
 ```
 
-Comandos mutáveis mostram alvo e exigem confirmação quando usados por humano;
-`--yes` existe para automação autenticada.
+Mutating commands show their target and request confirmation for interactive
+use. Authenticated automation may opt into `--yes`.
 
-## 9. Operação diária
+## Daily operations
 
-### Dashboard
+The dashboard exposes host reserves, CPU/RAM/storage, GPU health and memory,
+queued/running jobs, instance TTLs, caches, artifacts, runtime health, and
+actionable failures. Local alerts cover resource pressure, unavailable runtimes,
+stuck cleanup, repeated template failures, certificate expiry, updates, and
+suspicious login or pairing activity.
 
-- CPU/RAM/disco e reserva do host;
-- uso/temperatura/VRAM por GPU quando exposto pelo driver;
-- jobs em fila e ativos;
-- instâncias e TTL;
-- cache e artefatos;
-- saúde Docker/libvirt;
-- falhas que exigem ação.
+## Updates and rollback
 
-### Alertas locais
+Updates are signed, downloaded and verified before stopping the service, and
+preceded by a control-state backup. Database migrations are transactional.
+Health checks gate activation, and rollback restores the prior binary/schema
+when supported. GPU drivers are never bundled into automatic daemon updates.
 
-- disco ou VRAM em pressão;
-- runtime indisponível;
-- instância que não encerra;
-- falha repetida de template;
-- certificado próximo da expiração;
-- update disponível;
-- login ou pairing suspeito.
+## Uninstallation
 
-Notificações externas ficam opcionais e posteriores.
+`double-agent uninstall` lists affected jobs and instances, requires confirmation
+before stopping them, removes product services and binaries, and separately asks
+whether to preserve `/var/lib/double-agent`. It never removes Docker, libvirt, or
+drivers that existed before Double Agent.
 
-## 10. Backup e restauração
+## Kubernetes
 
-Backup padrão inclui:
-
-- SQLite consistente;
-- configuração;
-- CA e chaves necessárias cifradas;
-- templates e receitas;
-- opcionalmente artefatos.
-
-Não inclui por padrão:
-
-- instâncias;
-- overlays;
-- imagens OCI reconstruíveis;
-- modelos reconstruíveis;
-- logs volumosos.
-
-O backup deve ser cifrado e restaurável em um host sem GPU. Após restore,
-dispositivos são redetectados e receitas podem resolver para hardware diferente.
-
-## 11. Atualização e rollback
-
-- canais `stable` e futuramente `preview`;
-- baixar e verificar antes de parar;
-- backup automático de banco/config;
-- migração transacional;
-- health check após troca;
-- rollback de binário e schema quando suportado;
-- templates atualizados independentemente do daemon;
-- nunca atualizar driver GPU automaticamente junto do daemon.
-
-## 12. Desinstalação
-
-`double-agent uninstall`:
-
-1. lista instâncias e jobs afetados;
-2. para e destrói recursos após confirmação;
-3. remove serviços e binários;
-4. pergunta separadamente se deve preservar `/var/lib/double-agent`;
-5. nunca remove Docker/libvirt/driver que já existiam antes;
-6. gera relatório do que permaneceu.
-
-## 13. Kubernetes
-
-Kubernetes não será instalado pelo one-liner do MVP. O caminho futuro:
-
-- controlador Double Agent fora ou dentro do cluster;
-- node agent/DaemonSet para inventário;
-- Device Plugins/CDI para GPUs;
-- Jobs/Pods para containers;
-- KubeVirt para VMs quando escolhido;
-- PersistentVolume para cache/artefatos;
-- mesmas APIs MCP e receitas.
-
-Isso evita impor a complexidade operacional de cluster ao usuário de um único
-servidor.
-
+Kubernetes is a later runtime driver for real multi-node demand. It is not a
+dependency and is never installed automatically on a single host.

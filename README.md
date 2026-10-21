@@ -1,386 +1,287 @@
 <div align="center">
 
-<img src="assets/double-agent-logo.png" alt="Double Agent — duas faces, um único orquestrador" width="210" />
+<img src="assets/double-agent-logo.png" alt="Double Agent — two faces, one orchestrator" width="210" />
 
 # Double Agent
 
-### Duas inteligências. Uma infraestrutura. Ambientes infinitamente descartáveis.
+### Two intelligences. One infrastructure. Infinitely disposable environments.
 
-[![Status](https://img.shields.io/badge/status-design%20phase-0b1026?style=for-the-badge&labelColor=111936)](#estado-do-projeto)
+[![Status](https://img.shields.io/badge/status-design%20phase-0b1026?style=for-the-badge&labelColor=111936)](#project-status)
 [![MCP](https://img.shields.io/badge/interface-MCP-20c8f6?style=for-the-badge&labelColor=111936)](docs/MCP_API_AND_DISCOVERY.md)
 [![Linux](https://img.shields.io/badge/host-Linux-f4c95d?style=for-the-badge&labelColor=111936)](docs/INSTALLATION_AND_OPERATIONS.md)
 [![GPU](https://img.shields.io/badge/GPU-NVIDIA%20%7C%20AMD%20%7C%20Intel-39d98a?style=for-the-badge&labelColor=111936)](docs/RUNTIMES_GPU_AND_TEMPLATES.md)
-[![License](https://img.shields.io/badge/license-source--available-c792ea?style=for-the-badge&labelColor=111936)](LICENSE.md)
+[![Languages](https://img.shields.io/badge/i18n-English%20%7C%20Português-c792ea?style=for-the-badge&labelColor=111936)](docs/I18N.md)
 
-**Transforme qualquer servidor Linux em uma fábrica local de computadores para agentes de IA.**
+**Turn any Linux server into a local factory of computers for AI agents.**
 
-Double Agent descobre o hardware disponível, cria containers ou máquinas
-virtuais sob demanda, executa tarefas pesadas e devolve os artefatos ao agente
-que fez o pedido — sem ocupar a máquina principal do desenvolvedor.
+Double Agent discovers available hardware, creates containers or virtual
+machines on demand, performs compute-heavy work, and returns artifacts to the
+requesting agent—without occupying the developer's primary computer.
 
-[Visão](docs/VISION_AND_SCOPE.md) ·
-[Arquitetura](docs/ARCHITECTURE.md) ·
-[MCP](docs/MCP_API_AND_DISCOVERY.md) ·
-[GPUs e runtimes](docs/RUNTIMES_GPU_AND_TEMPLATES.md) ·
-[Roadmap](docs/MVP_ROADMAP_AND_TEST_PLAN.md)
+[Vision](docs/VISION_AND_SCOPE.md) · [Architecture](docs/ARCHITECTURE.md) ·
+[MCP](docs/MCP_API_AND_DISCOVERY.md) · [GPU and runtimes](docs/RUNTIMES_GPU_AND_TEMPLATES.md) ·
+[Roadmap](docs/MVP_ROADMAP_AND_TEST_PLAN.md) · [Português](README.pt-BR.md)
 
 </div>
 
-<img src="assets/double-agent-hero.png" alt="Um agente solicita trabalho ao Double Agent, que distribui tarefas entre containers, VMs e GPUs e devolve artefatos" width="100%" />
+<img src="assets/double-agent-hero.png" alt="An agent asks Double Agent to distribute work across containers, VMs, and GPUs and return artifacts" width="100%" />
 
 > [!IMPORTANT]
-> **Double Agent está em fase de arquitetura.** Este repositório contém a
-> especificação do produto; os comandos e endpoints apresentados são contratos
-> planejados e ainda não representam uma versão instalável.
+> **Double Agent is in the architecture phase.** This repository currently
+> contains the product specification and a multilingual Web preview. Commands
+> and endpoints described below are planned contracts, not a production release.
 
 ---
 
-## O problema
+## The problem
 
-Um agente de código consegue escrever software, mas frequentemente não possui:
+Coding agents can write software, but they often lack:
 
-- GPU para gerar imagens, vídeo ou assets 3D;
-- uma máquina Windows para validar o produto;
-- um desktop gráfico isolado com Blender ou Chromium;
-- CPU e RAM suficientes para builds e testes pesados;
-- vários ambientes descartáveis para trabalhar em paralelo;
-- permissão para instalar ferramentas na máquina do usuário.
+- a GPU for image, video, or 3D asset generation;
+- a Windows machine for product validation;
+- an isolated graphical desktop with Blender or Chromium;
+- enough CPU and memory for large builds and test suites;
+- multiple disposable environments for parallel work;
+- permission to install tools on the user's computer.
 
-Hoje o desenvolvedor precisa preparar cada ambiente manualmente, expor a própria
-máquina ou pagar por serviços diferentes. O Double Agent transforma um servidor
-local em uma camada de infraestrutura que qualquer agente autorizado entende.
+Double Agent turns a local server into an infrastructure layer that any
+authorized agent can understand and operate.
 
 ```text
-“Preciso de quatro imagens, um asset Blender e testes no Windows.”
+"I need four images, one Blender asset, and a Windows test run."
 
-            Agente solicitante
-                    │
-                    │ MCP
-                    ▼
-             ┌──────────────┐
-             │ Double Agent │
-             └──────┬───────┘
-                    │
-        ┌───────────┼───────────┐
-        ▼           ▼           ▼
-   GPU worker   Blender VM   Windows VM
-        │           │           │
-        └───────────┼───────────┘
-                    ▼
-        imagens · GLB · relatório
+              Requesting agent
+                     │
+                     │ MCP
+                     ▼
+              ┌──────────────┐
+              │ Double Agent │
+              └──────┬───────┘
+                     │
+         ┌───────────┼───────────┐
+         ▼           ▼           ▼
+    GPU worker   Blender VM   Windows VM
+         │           │           │
+         └───────────┼───────────┘
+                     ▼
+          images · GLB · report
 ```
 
-## A ideia
+## The idea
 
-Double Agent fica entre a IA que pede e o hardware que executa.
+Double Agent sits between the intelligence requesting work and the hardware
+performing it.
 
 ```mermaid
 flowchart LR
-    A[Agente externo<br/>Claude Code · Cursor · Codex] -->|MCP na LAN| G
-    H[Usuário] -->|Web UI| G
-
+    A[External agent<br/>Claude Code · Cursor · Codex] -->|MCP on the LAN| G
+    H[User] -->|Web UI| G
     subgraph DA[Double Agent]
-        G[Gateway + política]
-        J[Jobs + scheduler]
-        AI[IA interna opcional]
-        C[Catálogo + wiki]
+        G[Gateway and policy]
+        J[Jobs and scheduler]
+        AI[Optional internal AI]
+        C[Catalog and agent-readable docs]
         G --> J
         J <--> AI
         J --> C
     end
-
-    J --> L[Containers Linux]
-    J --> V[VMs Linux / Windows]
+    J --> L[Linux containers]
+    J --> V[Linux or Windows VMs]
     L --> N[NVIDIA]
     L --> M[AMD]
     L --> I[Intel]
     L --> P[CPU]
-    V --> Q[QEMU / KVM]
-
-    L --> R[Artefatos]
+    V --> Q[QEMU and KVM]
+    L --> R[Artifacts]
     V --> R
     R --> A
 ```
 
-Não é apenas um “servidor de IA”. É um **gestor de ambientes efêmeros orientado
-a agentes**, capaz de usar uma IA própria ou funcionar como executor puro.
+This is not only an AI server. It is an **agent-oriented ephemeral environment
+manager** that can run its own optional AI or act as a pure executor.
 
-## Por que “Double Agent”?
+## Why “Double Agent”?
 
-O produto possui duas faces complementares:
-
-| A face que solicita | A face que executa |
+| The requesting face | The executing face |
 |---|---|
-| Entende o objetivo do usuário | Entende o hardware e os runtimes |
-| Pode estar no notebook | Vive no servidor local |
-| Pode planejar toda a tarefa | Pode receber somente uma intenção |
-| Consome ferramentas MCP | Cria, opera e destrói ambientes |
-| Quer um resultado | Produz artefatos verificáveis |
+| Understands the user's outcome | Understands hardware and runtimes |
+| May live on a laptop | Lives on the local server |
+| May plan the entire task | May receive only an objective |
+| Consumes MCP tools | Creates, operates, and destroys environments |
+| Wants a result | Produces verifiable artifacts |
 
-O logo combina essas duas identidades em uma única máscara: uma face analítica,
-outra operacional, ligadas por infraestrutura e circuitos.
+The two-faced theatrical mask represents these complementary identities.
 
-## Três modos de operação
+## Three operating modes
 
 ```mermaid
 flowchart TB
-    Q{Quem vai raciocinar?}
-    Q -->|IA do cliente| E[Executor]
-    Q -->|IA no servidor| D[Delegado]
-    Q -->|As duas| H[Híbrido]
-
-    E --> E1[O cliente chama<br/>ferramentas de infraestrutura]
-    D --> D1[O cliente envia um objetivo<br/>e recebe artefatos]
-    H --> H1[O cliente supervisiona<br/>subtarefas delegadas]
+    Q{Where does reasoning happen?}
+    Q -->|Client AI| E[Executor]
+    Q -->|Server AI| D[Delegate]
+    Q -->|Both| H[Hybrid]
+    E --> E1[Client calls infrastructure tools]
+    D --> D1[Client sends an objective and receives artifacts]
+    H --> H1[Client supervises delegated subtasks]
 ```
 
-### Executor
+- **Executor:** the client directly controls instances, commands, files, and jobs.
+- **Delegate:** an optional local or remote LLM receives an objective and chooses tools.
+- **Hybrid:** the external AI owns the plan and delegates heavy subtasks.
 
-O cliente controla diretamente instâncias, comandos, arquivos e jobs. Nenhuma
-LLM precisa estar configurada no servidor.
+## What it is designed to do
 
-### Delegado
-
-Uma LLM local ou remota configurada no Double Agent recebe um objetivo e decide
-quais ambientes e ferramentas usar.
-
-### Híbrido
-
-A IA externa mantém o plano principal e delega trabalhos pesados para a IA do
-servidor, acompanhando logs e resultados.
-
-## O que ele poderá fazer
-
-| Capacidade | Exemplo | Resultado |
+| Capability | Example | Output |
 |---|---|---|
-| Geração de imagens | ComfyUI ou engine equivalente com GPU | PNG/WebP + prompt, seed e receita |
-| Blender | Modelar, texturizar, renderizar e exportar | `.blend`, `.glb`, `.fbx`, texturas e preview |
-| Build e testes | Clonar código e executar pipelines | Logs, cobertura, binários e relatório |
-| Desktop Linux | Chromium, terminal e aplicações gráficas | Desktop temporário + downloads |
-| Windows | Testar software ou automação de planilhas | Evidências e artefatos exportados |
-| Navegador | Executar fluxo web isolado | Screenshots, downloads e relatório |
-| Paralelismo | Criar várias instâncias para subtarefas | Jobs independentes e consolidados |
+| Image generation | ComfyUI or equivalent GPU engine | PNG/WebP, prompt, seed, recipe |
+| Blender | Model, texture, render, and export | `.blend`, `.glb`, `.fbx`, textures, preview |
+| Build and test | Clone code and execute pipelines | Logs, coverage, binaries, report |
+| Linux desktop | Chromium, terminal, graphical apps | Temporary desktop and downloads |
+| Windows | Software testing or spreadsheet automation | Evidence and exported artifacts |
+| Browser | Isolated Web workflow | Screenshots, downloads, report |
+| Parallelism | Multiple instances for independent subtasks | Consolidated job results |
 
-## Um pedido, vários ambientes
+## One request, multiple environments
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant C as Cliente MCP
+    participant C as MCP client
     participant D as Double Agent
     participant S as Scheduler
-    participant G as GPU Worker
+    participant G as GPU worker
     participant W as Windows VM
-    participant A as Artifact Store
-
-    C->>D: task.delegate(objetivo, limites)
-    D->>S: resolver templates e recursos
-    par Criar imagens
-        S->>G: container + GPU disponível
+    participant A as Artifact store
+    C->>D: task.delegate(objective, limits)
+    D->>S: resolve templates and resources
+    par Generate images
+        S->>G: container and available GPU
         G-->>A: concepts/*.png
-    and Testar aplicação
-        S->>W: VM Windows efêmera
+    and Test application
+        S->>W: ephemeral Windows VM
         W-->>A: test-report.html
     end
-    D->>D: destruir ambientes e liberar hardware
-    D-->>C: job concluído + handles dos artefatos
+    D->>D: destroy environments and release hardware
+    D-->>C: completed job and artifact handles
 ```
 
-## Hardware heterogêneo
+## Heterogeneous hardware
 
-O MVP tratará CPU e os três ecossistemas de GPU como capacidades reais,
-detectadas e testadas no host.
-
-| Backend | Containers Linux | VMs | Uso esperado |
+| Backend | Linux containers | VMs | Primary use |
 |---|:---:|:---:|---|
-| NVIDIA CUDA/CDI | ✅ MVP | 🧪 VFIO | IA, render, computação |
-| AMD ROCm/DRI | ✅ MVP | 🧪 VFIO | IA, render, computação |
-| Intel Level Zero/DRI | ✅ MVP | 🧪 VFIO/SR-IOV | IA, OpenVINO, render |
-| CPU | ✅ MVP | ✅ MVP | Build, testes e fallback |
+| NVIDIA CUDA/CDI | ✅ MVP | 🧪 VFIO | AI, rendering, compute |
+| AMD ROCm/DRI | ✅ MVP | 🧪 VFIO | AI, rendering, compute |
+| Intel Level Zero/DRI | ✅ MVP | 🧪 VFIO/SR-IOV | AI, OpenVINO, rendering |
+| CPU | ✅ MVP | ✅ MVP | Builds, tests, fallback |
 
-> [!NOTE]
-> “Suporta AMD/Intel/NVIDIA” não significará apenas detectar um PCI ID.
-> `double-agent doctor` executará um smoke-test real e publicará somente as
-> capacidades comprovadas para aquela combinação de hardware, kernel e driver.
+Support means a real smoke test passes for the exact hardware, kernel, and
+driver combination—not merely that a PCI vendor ID was detected.
 
-## Containers quando possível, VMs quando necessário
+## Runtime selection
 
 ```mermaid
 flowchart TD
-    T[Nova tarefa] --> O{Precisa de outro kernel<br/>ou Windows?}
-    O -->|Não| C[Container Linux]
-    O -->|Sim| V[VM QEMU/KVM]
-    C --> G{Precisa de GPU?}
-    V --> P{Passthrough validado?}
-    G -->|Não| CPU[CPU + cgroups]
-    G -->|Sim| CDI[GPU via CDI / device nodes]
-    P -->|Não| VCPU[VM com CPU]
-    P -->|Sim| VFIO[GPU exclusiva via VFIO]
+    T[New task] --> O{Different kernel or Windows?}
+    O -->|No| C[Linux container]
+    O -->|Yes| V[QEMU or KVM VM]
+    C --> G{GPU required?}
+    V --> P{Passthrough validated?}
+    G -->|No| CPU[CPU and cgroups]
+    G -->|Yes| CDI[GPU through CDI or device nodes]
+    P -->|No| VCPU[CPU-only VM]
+    P -->|Yes| VFIO[Exclusive GPU through VFIO]
 ```
 
-- **Containers:** rápidos, leves e ideais para IA, Blender, navegadores e builds.
-- **VMs Linux:** kernel próprio para testes de sistema e isolamento adicional.
-- **VMs Windows:** imagem e licença fornecidas pelo usuário.
-- **macOS:** futuro worker em Mac físico; não será emulado ilegalmente num host
-  Linux genérico.
+## LAN discovery and MCP connection
 
-## Descoberto automaticamente na rede
-
-O servidor anunciará apenas identidade e endpoint por mDNS:
+The daemon advertises `_double-agent._tcp.local` through mDNS. A small bridge
+can pair with the server and expose `stdio` MCP for clients that do not support
+remote Streamable HTTP directly.
 
 ```text
-_double-agent._tcp.local
+$ double-agent discover
+NAME          ADDRESS             GPU                STATUS
+studio-node   192.168.1.40:7443   Intel Arc A770     ready
+
+$ double-agent pair studio-node
+Fingerprint: SHA256:...
+Pairing code: 482 117
+
+$ double-agent connect cursor
+Client configured successfully.
 ```
 
-Depois, um bridge local fará pairing e conectará clientes que usam MCP `stdio`:
+LAN broadcast is discovery, not authentication. Every request still requires
+TLS, a revocable credential, scopes, quotas, and policy evaluation.
 
-```bash
-# Comandos planejados — ainda não disponíveis
-double-agent discover
-double-agent pair <server-id>
-double-agent connect claude-code
-double-agent connect cursor
-double-agent connect codex
-```
-
-Descobrir não significa confiar. O pairing fixa a CA/fingerprint do servidor e
-gera uma credencial revogável.
-
-## MCP que se explica sozinho
-
-Além das ferramentas, o servidor expõe uma wiki como recursos MCP:
+## Planned MCP surface
 
 ```text
-doubleagent://wiki/getting-started
-doubleagent://wiki/security
-doubleagent://wiki/templates
-doubleagent://wiki/gpu
-doubleagent://jobs/{job_id}
-doubleagent://artifacts/{artifact_id}/metadata
+capabilities.get       template.list          instance.create
+instance.exec          instance.destroy       file.upload.begin
+artifact.export        artifact.download      job.get
+job.cancel             desktop.open           task.delegate
 ```
 
-Ferramentas planejadas:
+Long operations return `job_id` handles. Large outputs are transferred as
+authenticated artifacts rather than oversized MCP payloads. Agent-readable
+resources under `double-agent://docs/*` describe tools, templates, limits, and
+examples. See [MCP API and discovery](docs/MCP_API_AND_DISCOVERY.md).
 
-```text
-system.describe          template.list           task.delegate
-system.capabilities      instance.create          job.get
-system.health            instance.exec            job.logs
-artifact.import          instance.destroy         job.cancel
-artifact.export          desktop.get_access       image.generate
-artifact.get             software.test            blender.create_asset
-```
+## Security boundary
 
-Leia a especificação em [MCP, API e descoberta](docs/MCP_API_AND_DISCOVERY.md).
-
-## Efêmero por padrão
-
-```mermaid
-stateDiagram-v2
-    [*] --> Requested
-    Requested --> Provisioning
-    Provisioning --> Ready
-    Ready --> Busy
-    Busy --> Ready
-    Ready --> Stopping: idle timeout
-    Stopping --> Stopped
-    Stopped --> Deleting: TTL
-    Deleting --> Deleted
-    Deleted --> [*]
-    Provisioning --> Error
-    Busy --> Error
-    Error --> Deleting
-```
-
-### O que permanece
-
-- sessão e objetivo;
-- receita reproduzível;
-- versões, digests e passos executados;
-- logs sanitizados;
-- artefatos exportados;
-- cache controlado de imagens e modelos.
-
-### O que desaparece
-
-- disco e overlay da instância;
-- `/tmp`, perfil do navegador e memória;
-- credenciais transitórias;
-- arquivos que não foram exportados;
-- tokens de desktop e guest agent.
-
-## Segurança: root no lugar certo
-
-O agente poderá ser root dentro da instância. Ele não receberá:
-
-- socket do Docker/libvirt;
-- filesystem, PID namespace ou rede do host;
-- dispositivos que não foram alocados;
-- banco, cofre ou chave mestra;
-- instâncias e artefatos de outros usuários.
+An agent may be root inside its instance. It does not receive the host runtime
+socket, host filesystem, host PID namespace, unallocated devices, raw secrets,
+or access to other users' instances and artifacts.
 
 ```mermaid
 flowchart LR
-    U["Cliente ou LLM"] -->|"TLS e token"| P["Gateway e politica"]
-    P -->|"Operacao validada"| R["Runtime privilegiado"]
-    R -->|"Sandbox"| I["Instancia isolada"]
-    P --> V[Cofre]
-    V -.->|"Referencia opaca"| I
-    I --> A["Artefatos aprovados"]
+    U[Client or LLM] -->|TLS and token| P[Gateway and policy]
+    P -->|Validated operation| R[Privileged runtime]
+    R -->|Sandbox| I[Isolated instance]
+    P --> V[Vault]
+    V -.->|Opaque reference| I
+    I --> A[Approved artifacts]
 ```
 
-Mais detalhes em
-[Segurança, persistência e ciclo de vida](docs/SECURITY_STORAGE_AND_LIFECYCLE.md).
-
-## Instalação desejada
+## Desired installation experience
 
 ```bash
-# Contrato futuro; o domínio ainda não existe
-curl -fsSL https://<dominio-oficial>/install.sh | sudo bash
+curl -fsSL https://install.double-agent.dev | sudo sh
 ```
 
-O bootstrap deverá:
+The installer will verify its signature, inspect the host, create the service
+account, prompt for the first administrator, generate local TLS material,
+detect Docker/KVM/GPUs, run smoke tests, and print the Web UI URL and fingerprint.
+It will never install GPU drivers or enable virtualization without explicit approval.
 
-1. detectar host e virtualização;
-2. instalar um pacote assinado;
-3. perguntar usuário e senha do administrador via TTY;
-4. configurar Web UI, CA local e firewall da LAN;
-5. detectar Docker, KVM e GPUs;
-6. executar smoke-tests;
-7. iniciar o daemon e mostrar URL + fingerprint.
-
-Kubernetes será um backend posterior. O instalador do MVP não transformará um
-servidor simples em cluster sem necessidade.
-
-## Arquitetura de referência
+## Reference architecture
 
 ```mermaid
 flowchart TB
-    subgraph Clients[Clientes]
+    subgraph Clients
         CC[Claude Code]
         CU[Cursor]
         CX[Codex]
-        UI[Navegador]
+        UI[Browser]
     end
-
-    subgraph Control[Plano de controle]
-        GW[MCP / API Gateway]
-        AU[Auth + Policy]
-        JO[Job Orchestrator]
-        SC[Scheduler]
-        IA[LLM Runtime opcional]
-        DB[(SQLite)]
-        VA[(Secret Vault)]
-        AR[(Artifact Store)]
+    subgraph Control[Control plane]
+        GW[MCP and API gateway]
+        AU[Authentication and policy]
+        JO[Job orchestrator]
+        SC[Resource scheduler]
+        IA[Optional AI runtime]
+        DB[(Metadata)]
+        VA[(Secrets)]
+        AR[(Artifacts)]
     end
-
-    subgraph Execution[Plano de execução]
-        DO[Docker Runtime]
-        LV[libvirt Runtime]
-        LC[Linux Containers]
-        VM[Linux / Windows VMs]
-        GP[GPU Adapters]
+    subgraph Execution[Execution plane]
+        DO[Docker runtime]
+        LV[libvirt runtime]
+        LC[Linux containers]
+        VM[Linux or Windows VMs]
+        GP[GPU adapters]
     end
-
     CC --> GW
     CU --> GW
     CX --> GW
@@ -399,114 +300,81 @@ flowchart TB
     LV --> VM
 ```
 
-A especificação detalhada está em [Arquitetura](docs/ARCHITECTURE.md).
+## Internationalization
 
-## Roadmap
+English is the canonical language for code, APIs, logs, documentation, and the
+default Web UI. The Web preview includes a language selector, browser-locale
+detection, persisted preference, and an English fallback. Brazilian Portuguese
+is the first translation. See [Internationalization](docs/I18N.md).
 
-| Fase | Entrega | Demonstração de aceite |
-|---:|---|---|
-| 0 | Provas de GPU, desktop, VM, MCP e mDNS | Hardware real validado |
-| 1 | Vertical slice CPU | Agente executa testes num container e recebe relatório |
-| 2 | GPU heterogênea | Mesmo job roda em NVIDIA, AMD e Intel suportadas |
-| 3 | Desktop e navegador | Takeover autenticado sem portas expostas |
-| 4 | IA interna | Objetivo de alto nível vira múltiplos artefatos |
-| 5 | VMs | Linux e Windows efêmeros com exportação |
-| 6 | MVP | Instalador, hardening, assinatura e documentação |
+| Surface | Default | Localization strategy |
+|---|---|---|
+| Code, schemas, API fields | English only | Stable machine-facing contract |
+| Logs and audit events | English only | Searchable operational vocabulary |
+| Web UI | English | Translation catalogs and language selector |
+| Human documentation | English | Versioned translations under `docs/<locale>` |
+| MCP descriptions | English | Optional locale negotiation later |
 
-Veja critérios e matriz completa em
-[MVP, roadmap e testes](docs/MVP_ROADMAP_AND_TEST_PLAN.md).
+Open the preview locally:
 
-## Estrutura do repositório
+```bash
+python3 -m http.server 8080
+```
+
+Then visit `http://localhost:8080/web/`.
+
+Validate documentation and locale catalogs with:
+
+```bash
+node scripts/check-docs.mjs
+node web/test-i18n.mjs
+```
+
+## Repository map
 
 ```text
 .
-├── assets/
-│   ├── double-agent-logo.png
-│   └── double-agent-hero.png
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── DECISIONS_AND_OPEN_QUESTIONS.md
-│   ├── INSTALLATION_AND_OPERATIONS.md
-│   ├── MCP_API_AND_DISCOVERY.md
-│   ├── MVP_ROADMAP_AND_TEST_PLAN.md
-│   ├── REFERENCES.md
-│   ├── RUNTIMES_GPU_AND_TEMPLATES.md
-│   ├── SECURITY_STORAGE_AND_LIFECYCLE.md
-│   └── VISION_AND_SCOPE.md
-├── LICENSE.md
-└── README.md
+├── README.md                 # Canonical English overview
+├── README.pt-BR.md           # Brazilian Portuguese overview
+├── assets/                   # Brand and architecture artwork
+├── docs/                     # Canonical English specifications
+│   ├── I18N.md
+│   └── pt-BR/                # Portuguese specification snapshot
+└── web/                      # Multilingual Web UI preview
+    ├── index.html
+    ├── app.js
+    ├── styles.css
+    └── locales/
 ```
 
-## Decisões importantes
+## Roadmap snapshot
 
-- projeto independente do FeverCode;
-- Linux como host do MVP;
-- Docker primeiro, libvirt/QEMU para VMs;
-- NVIDIA, AMD e Intel validadas em containers Linux;
-- Windows com mídia/licença do administrador;
-- macOS somente em hardware Apple num backend futuro;
-- MCP remoto + bridge `stdio`;
-- mDNS para descoberta física na LAN;
-- um nó sólido antes de Kubernetes;
-- discos efêmeros, receitas e artefatos persistentes;
-- código visível sob licença source-available.
+| Phase | Outcome | Status |
+|---|---|---|
+| 0 | Hardware probes and technical proofs | Planned |
+| 1 | CPU vertical slice, installer, MCP, artifacts | Planned |
+| 2 | NVIDIA, AMD, and Intel GPU support | Planned |
+| 3 | Desktop and browser workers | Planned |
+| 4 | Optional internal AI and delegation | Planned |
+| 5 | Linux and Windows VMs | Planned |
+| 6 | Hardened MVP release | Planned |
 
-As questões ainda abertas estão em
-[Decisões e questões abertas](docs/DECISIONS_AND_OPEN_QUESTIONS.md).
+## Project status
 
-## Documentação
+The repository is a product and architecture foundation. It is ready for
+technical spikes, hardware inventory, threat modeling, and implementation
+planning. It is not yet ready to install on a production server.
 
-| Documento | Conteúdo |
-|---|---|
-| [Visão e escopo](docs/VISION_AND_SCOPE.md) | Problema, usuários, casos de uso e metas |
-| [Arquitetura](docs/ARCHITECTURE.md) | Componentes, dados, estados e evolução para cluster |
-| [MCP e descoberta](docs/MCP_API_AND_DISCOVERY.md) | Transporte, bridge, pairing, ferramentas e recursos |
-| [Runtimes e GPUs](docs/RUNTIMES_GPU_AND_TEMPLATES.md) | Docker, KVM, vendors, scheduler, templates e cache |
-| [Segurança e lifecycle](docs/SECURITY_STORAGE_AND_LIFECYCLE.md) | Confiança, segredos, rede, retenção e ameaças |
-| [Instalação e operação](docs/INSTALLATION_AND_OPERATIONS.md) | One-liner, drivers, serviços, backup e atualização |
-| [Roadmap e testes](docs/MVP_ROADMAP_AND_TEST_PLAN.md) | Fases, testes de hardware, falhas e Definition of Done |
-| [Decisões](docs/DECISIONS_AND_OPEN_QUESTIONS.md) | Decisões confirmadas, limites e dúvidas |
-| [Referências](docs/REFERENCES.md) | Fontes oficiais de MCP, GPU, virtualização e licença |
+## License
 
-## Estado do projeto
-
-```text
-Produto e arquitetura      ████████████████████  documentados
-Protocolos e segurança     ████████████████████  especificados
-Provas de hardware         ░░░░░░░░░░░░░░░░░░░░  próximas
-Implementação              ░░░░░░░░░░░░░░░░░░░░  não iniciada
-Release MVP                ░░░░░░░░░░░░░░░░░░░░  futura
-```
-
-Este repositório começa deliberadamente pela especificação. Compatibilidade com
-GPU, isolamento e lifecycle serão comprovados antes de virarem promessas de
-produto.
-
-## Marca e assets
-
-As imagens deste README foram geradas especificamente para o Double Agent. O
-conceito visual é original: duas faces teatrais unificadas por uma infraestrutura
-central. Não é reprodução de logotipos de óperas, filmes ou outras marcas.
-
-- `assets/double-agent-logo.png` — logo com fundo transparente;
-- `assets/double-agent-hero.png` — ilustração horizontal do fluxo do produto.
-
-## Licença
-
-O objetivo comercial informado é permitir leitura e uso próprio, mas impedir
-revenda ou redistribuição sem autorização. Isso é **source-available**, não open
-source segundo a definição da OSI.
-
-Até a licença definitiva ser revisada juridicamente, todos os direitos
-permanecem reservados. Consulte [LICENSE.md](LICENSE.md).
+The current repository is **source-available**, not OSI open source. Viewing
+and evaluating the source is permitted; redistribution, resale, sublicensing,
+and commercial hosting require written authorization. See [LICENSE.md](LICENSE.md).
 
 ---
 
 <div align="center">
 
-<img src="assets/double-agent-logo.png" alt="Double Agent" width="96" />
-
-**Double Agent** — dê ao seu agente um computador à altura da tarefa.
+**Double Agent** — ask once, provision what is needed, keep only the result.
 
 </div>
-

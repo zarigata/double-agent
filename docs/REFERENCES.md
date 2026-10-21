@@ -1,49 +1,39 @@
-# Referências
+# References
 
-Pesquisa realizada em 21 de outubro de 2026. Priorizar documentação oficial e
-fixar versões durante a implementação, pois runtimes, drivers e MCP mudam.
+Research baseline: October 21, 2026. Prefer primary documentation and pin
+versions during implementation because runtimes, drivers, and MCP evolve.
 
-## Inspiração
+## Inspiration
 
-- [Xiryn — repositório e arquitetura](https://github.com/SouravBeraAkaSpeed/xiryn):
-  estação Linux em Docker por agente, desktop remoto e máquinas descartáveis.
-  O Double Agent reutiliza a ideia de isolamento/lifecycle, mas é um servidor de
-  infraestrutura MCP independente de um agente obrigatório.
+- [Xiryn repository and architecture](https://github.com/SouravBeraAkaSpeed/xiryn)
+  — a Docker-based disposable Linux workstation per agent. Double Agent adopts
+  the isolation/lifecycle idea while remaining an independent MCP infrastructure
+  server that does not require its own agent.
 
 ## Model Context Protocol
 
-- [Especificação MCP 2026-07-28](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/index.mdx)
+- [MCP specification 2026-07-28](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/index.mdx)
 - [Streamable HTTP](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/basic/transports/streamable-http.mdx)
 - [`server/discover`](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/server/discover.mdx)
-- [Descoberta do authorization server](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/basic/authorization/authorization-server-discovery.mdx)
-- [MCP Server Cards e AI Catalog](https://github.com/modelcontextprotocol/ext-server-card/blob/main/docs/discovery.md)
+- [Authorization server discovery](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/basic/authorization/authorization-server-discovery.mdx)
+- [MCP Server Cards and AI Catalog](https://github.com/modelcontextprotocol/ext-server-card/blob/main/docs/discovery.md)
 
-Conclusões usadas no plano:
+The architecture uses remote Streamable HTTP, validates browser origins,
+authenticates every connection, models long work with explicit job handles, and
+uses mDNS for physical LAN discovery rather than as a replacement for Server Cards.
 
-- Streamable HTTP é o transporte remoto preferido;
-- o endpoint precisa validar `Origin` e autenticar conexões;
-- a versão 2026-07-28 é stateless, portanto jobs usam handles explícitos;
-- Server Cards descobrem por domínio, não substituem broadcast mDNS;
-- compatibilidade com clientes anteriores precisa de testes e negociação.
-
-## GPU em containers
+## GPU containers
 
 ### NVIDIA
 
 - [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/overview.html)
-- [Suporte a CDI](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html)
-- [Guia de instalação](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
-
-CDI padroniza a injeção de dispositivos em runtimes compatíveis e permite
-selecionar GPUs ou partições suportadas.
+- [CDI support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html)
+- [Installation guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
 
 ### AMD
 
-- [ROCm: instalação em Linux](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/)
-- [ROCm em containers](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/docker.html)
-
-O acesso típico requer os dispositivos `/dev/kfd` e `/dev/dri`; compatibilidade
-depende do modelo, kernel e versão ROCm.
+- [ROCm installation on Linux](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/)
+- [ROCm in containers](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/docker.html)
 
 ### Intel
 
@@ -51,45 +41,33 @@ depende do modelo, kernel e versão ROCm.
 - [Intel GPU documentation](https://dgpu-docs.intel.com/)
 - [OpenVINO GPU device](https://docs.openvino.ai/2025/openvino-workflow/running-inference/inference-devices-and-modes/gpu-device.html)
 
-O acesso em containers normalmente passa pelos render nodes em `/dev/dri` e
-backends como Level Zero, OpenCL, OpenVINO ou Vulkan. O MVP deve provar a GPU
-Intel concreta em vez de assumir compatibilidade pelo vendor.
+## Virtualization and operating systems
 
-## Virtualização e sistemas operacionais
-
-- [libvirt domain XML — host devices](https://libvirt.org/formatdomain.html#host-device-assignment)
+- [libvirt host-device assignment](https://libvirt.org/formatdomain.html#host-device-assignment)
 - [Linux VFIO](https://docs.kernel.org/driver-api/vfio.html)
 - [QEMU documentation](https://www.qemu.org/docs/master/)
 - [Apple Virtualization framework](https://developer.apple.com/documentation/virtualization)
-- [Apple Software License Agreements](https://www.apple.com/legal/sla/)
-- [Microsoft Windows licensing documents](https://www.microsoft.com/licensing/docs/view/Windows-Desktop)
+- [Apple software license agreements](https://www.apple.com/legal/sla/)
+- [Microsoft Windows licensing](https://www.microsoft.com/licensing/docs/view/Windows-Desktop)
 
-Conclusões usadas:
-
-- passthrough depende de IOMMU, grupos e suporte de reset/hardware;
-- macOS virtualizado deve permanecer ligado a hardware/licenças Apple;
-- imagens e acesso remoto do Windows possuem obrigações próprias; o usuário
-  fornece mídia e licença.
-
-## Licenciamento do produto
+## Product licensing
 
 - [Open Source Definition](https://opensource.org/osd)
-- [FAQ da Open Source Initiative](https://opensource.org/faq)
+- [Open Source Initiative FAQ](https://opensource.org/faq)
 
-A definição de open source exige redistribuição livre e não permite proibir
-uso comercial. Um software cujo código pode ser visto, mas não revendido ou
-redistribuído sem autorização, deve ser descrito como **source-available**, não
-open source. A licença final requer aconselhamento jurídico.
+The Open Source Definition requires free redistribution and does not permit a
+general ban on commercial use. Code that can be viewed but not redistributed
+without authorization should be called source-available.
 
-## Referências a selecionar durante a implementação
+## Implementation references still to select
 
-- API oficial do Docker Engine;
-- API e bindings libvirt escolhidos;
-- especificação OCI e Container Device Interface;
-- mDNS/DNS-SD (RFC 6762/6763);
-- Argon2 e parâmetros atuais de password hashing;
-- OAuth 2.1 e RFCs exigidas pela versão MCP escolhida;
-- formatos SPDX/CycloneDX para SBOM;
-- SLSA/Sigstore para cadeia de release;
-- termos de cada modelo e aplicação distribuídos em templates.
-
+- Docker Engine API and selected Go client;
+- libvirt API and bindings;
+- OCI and Container Device Interface specifications;
+- mDNS/DNS-SD RFC 6762 and RFC 6763;
+- current Argon2 password-hashing guidance;
+- OAuth requirements for the selected MCP version;
+- SPDX/CycloneDX for SBOM;
+- Sigstore/SLSA for release provenance;
+- ICU MessageFormat or FormatJS for production localization;
+- license terms for every distributed model and application.

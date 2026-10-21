@@ -1,0 +1,56 @@
+{
+  "accessibility": { "skip": "Skip to content" },
+  "language": { "label": "Language", "changed": "Language changed to English." },
+  "nav": { "capabilities": "Capabilities", "architecture": "Architecture", "security": "Security" },
+  "hero": {
+    "eyebrow": "SELF-HOSTED · MCP-NATIVE · GPU-AWARE",
+    "title": "Give every AI agent a computer built for the task.",
+    "description": "Double Agent turns your Linux server into secure, disposable workstations with CPU, NVIDIA, AMD, Intel, Linux, Windows, Blender, browsers, and development tools.",
+    "readDocs": "Read the specification",
+    "seeHow": "See how it works"
+  },
+  "stats": {
+    "modesValue": "3",
+    "modesLabel": "operation modes",
+    "vendorsValue": "3",
+    "vendorsLabel": "GPU vendors",
+    "retainedValue": "0",
+    "retainedLabel": "VMs retained by default"
+  },
+  "capabilities": {
+    "eyebrow": "ONE REQUEST, THE RIGHT ENVIRONMENT",
+    "title": "From intent to verified artifacts",
+    "imagesTitle": "Generate images",
+    "imagesBody": "Schedule a proven GPU backend and preserve prompts, seeds, models, and hashes.",
+    "blenderTitle": "Build 3D assets",
+    "blenderBody": "Run Blender headlessly or open a temporary desktop, then export GLB, FBX, and previews.",
+    "testTitle": "Build and test",
+    "testBody": "Create clean Linux or Windows environments and return reports, binaries, and logs.",
+    "browseTitle": "Use a browser",
+    "browseBody": "Run isolated browser workflows with authenticated viewing and controlled downloads."
+  },
+  "architecture": {
+    "eyebrow": "TWO FACES, ONE CONTROL PLANE",
+    "title": "The client reasons. The server executes.",
+    "body": "Use Double Agent as a pure executor, delegate an objective to its optional internal AI, or combine both approaches.",
+    "step1Title": "Discover",
+    "step1Body": "The client finds proven capabilities over MCP.",
+    "step2Title": "Provision",
+    "step2Body": "The scheduler selects a container, VM, CPU, or GPU.",
+    "step3Title": "Execute",
+    "step3Body": "The isolated environment performs the work.",
+    "step4Title": "Export",
+    "step4Body": "The agent receives verified artifacts and metadata.",
+    "step5Title": "Destroy",
+    "step5Body": "Resources are released; only approved results remain."
+  },
+  "security": {
+    "eyebrow": "POWERFUL INSIDE, ISOLATED FROM THE HOST",
+    "title": "Root in the instance is not root on the server.",
+    "body": "Runtime sockets, host files, unassigned devices, raw secrets, and other users' workloads stay outside the agent boundary."
+  },
+  "footer": {
+    "status": "Architecture preview · Not yet production software",
+    "language": "English is canonical. Human-facing surfaces are multilingual."
+  }
+}

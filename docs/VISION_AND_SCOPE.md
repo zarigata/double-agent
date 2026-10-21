@@ -1,139 +1,115 @@
-# Visão e escopo
+# Vision and scope
 
-## 1. Problema
+## Problem
 
-Agentes de desenvolvimento rodam no computador do usuário ou em sandboxes
-limitadas. Quando precisam de uma GPU, um desktop gráfico, outro sistema
-operacional, ferramentas pesadas ou vários ambientes em paralelo, a pessoa
-precisa preparar tudo manualmente e consumir recursos da máquina em que está
-trabalhando.
+Development agents usually run on a user's computer or inside a restricted
+sandbox. When they need a GPU, a graphical desktop, another operating system,
+large toolchains, or several parallel environments, the user must prepare the
+infrastructure manually and consume local resources.
 
-O Double Agent oferece uma terceira opção: um servidor local dedicado que
-publica suas capacidades para agentes autorizados. O agente solicita o
-resultado, não precisa conhecer previamente os detalhes do host e recebe os
-artefatos de volta.
+Double Agent provides a third option: a dedicated local server that publishes
+its proven capabilities to authorized agents. The client asks for an outcome,
+does not need to understand every host detail, and receives exported artifacts.
 
-## 2. Visão
+## Vision
 
-O Double Agent deve ser para infraestrutura de agentes o que um hipervisor é
-para servidores: um plano de controle para criar, usar, observar e destruir
-ambientes. A diferença é que sua interface primária é compreensível por agentes
-de IA, via MCP, e seu catálogo descreve capacidades como “renderizar no
-Blender”, “gerar imagem”, “abrir desktop”, “rodar suíte de testes” ou “criar VM
-Windows”.
+Double Agent should be to agent infrastructure what a hypervisor is to server
+infrastructure: a control plane for creating, using, observing, and destroying
+environments. Its primary interface is designed for AI agents through MCP, and
+its catalog describes outcomes such as “render in Blender,” “generate an
+image,” “open a desktop,” “run the test suite,” or “create a Windows VM.”
 
-O produto não substitui Proxmox, Docker ou Kubernetes. Ele os orquestra por meio
-de drivers e acrescenta:
+It does not replace Proxmox, Docker, Kubernetes, or libvirt. It orchestrates
+them through drivers and adds:
 
-- descoberta e documentação consumíveis por IA;
-- receitas reproduzíveis;
-- jobs assíncronos e artefatos;
-- seleção de hardware;
-- IA interna opcional;
-- lifecycle efêmero;
-- painel operacional voltado a agentes.
+- agent-readable discovery and documentation;
+- reproducible recipes;
+- asynchronous jobs and artifacts;
+- hardware-aware scheduling;
+- an optional internal AI;
+- ephemeral lifecycle management;
+- an operator-focused Web UI.
 
-## 3. Usuários iniciais
+## Initial users
 
-### Desenvolvedor individual
+### Individual developer
 
-Possui uma workstation ou servidor ocioso e quer que Claude Code, Cursor ou
-outro agente usem esse hardware sem sobrecarregar o notebook.
+Owns an idle workstation or server and wants Claude Code, Cursor, Codex, or
+another client to use that hardware without overloading a laptop.
 
-### Equipe em uma LAN
+### Team on a LAN
 
-Compartilha um servidor de build/GPU. Cada pessoa recebe uma chave com cotas e
-vê apenas suas sessões, enquanto um administrador enxerga o nó inteiro.
+Shares a build or GPU server. Each person receives a scoped key and only sees
+their sessions, while administrators can observe the entire node.
 
-### Operador de laboratório de IA
+### AI lab operator
 
-Mantém modelos e aplicações pesadas em cache e quer expor serviços temporários
-sem transformar cada ferramenta em uma API permanente.
+Keeps heavy models and applications cached and wants to expose temporary
+services without turning every tool into a permanent API.
 
-## 4. Casos de uso prioritários
+## Priority use cases
 
-1. **Geração de imagens:** criar ambiente compatível com a GPU disponível,
-   obter modelo autorizado, executar workflow e exportar imagens e metadados.
-2. **Blender:** criar asset por script ou desktop, renderizar e exportar `.blend`,
-   `.glb`, `.fbx`, texturas e previews.
-3. **Desenvolvimento e testes:** clonar ou receber código, instalar dependências,
-   iniciar serviços, executar testes e devolver relatórios.
-4. **Desktop e navegador:** disponibilizar Linux com Chromium e acesso remoto
-   para etapas visuais ou intervenção humana.
-5. **Windows temporário:** iniciar VM licenciada pelo usuário para testes de
-   software ou automações de aplicações Windows.
-6. **Paralelismo:** criar várias instâncias independentes para produzir assets
-   ou testar combinações em paralelo, respeitando cotas.
+1. **Image generation:** select compatible hardware, obtain an authorized
+   model, run a workflow, and export images plus provenance metadata.
+2. **Blender:** create assets by script or desktop, render them, and export
+   `.blend`, `.glb`, `.fbx`, textures, and previews.
+3. **Development and testing:** receive source code, install dependencies,
+   start services, run tests, and return reports.
+4. **Desktop and browser:** provide an isolated Linux desktop with Chromium for
+   visual work or human takeover.
+5. **Temporary Windows:** boot a user-licensed image for application tests or
+   Windows automation.
+6. **Parallel work:** create independent instances while enforcing quotas.
 
-## 5. Dois níveis de interface
+## Two interface levels
 
-### Ferramentas de intenção
+Intent tools are optimized for outcomes, such as `image.generate`,
+`blender.create_asset`, `software.test`, and `browser.perform_task`.
+Infrastructure tools expose explicit control over instances, commands, files,
+logs, desktops, and destruction. Both levels must coexist.
 
-São preferidas quando o cliente quer um resultado:
+## Expected user journey
 
-- `image.generate`
-- `blender.create_asset`
-- `software.test`
-- `browser.perform_task`
+1. Install Double Agent and create the first administrator.
+2. Review the host inventory and proven capabilities in the Web UI.
+3. Configure optional LLM providers and resource policies.
+4. Generate a scoped client key.
+5. Discover and pair with the server on the LAN.
+6. Let the agent read documentation resources and call MCP tools.
+7. Observe jobs, instances, quotas, and artifacts in the Web UI.
+8. Download results while ephemeral instances are destroyed automatically.
 
-Elas escolhem template, recursos e etapas automaticamente. No modo delegado,
-uma LLM interna pode decompor o objetivo.
+## Measurable MVP goals
 
-### Ferramentas de infraestrutura
+- fresh installation to Web UI within 15 minutes, excluding drivers and models;
+- warm CPU container creation within 10 seconds;
+- mDNS visibility within 5 seconds on the same subnet;
+- no raw secret in logs or MCP responses;
+- reliable TTL cleanup and reboot reconciliation;
+- validated execution on at least one NVIDIA, AMD, and Intel device;
+- artifact transfer beyond practical MCP payload limits;
+- control-plane recovery independent of ephemeral instances.
 
-Permitem controle explícito:
+## Initial non-goals
 
-- criar instância;
-- executar comando;
-- enviar e baixar arquivos;
-- inspecionar logs;
-- abrir desktop;
-- destruir instância.
+- operating a public cloud;
+- claiming hostile multi-tenant isolation equivalent to a cloud provider;
+- acquiring Windows, application, or model licenses for the user;
+- retaining full instance disks indefinitely;
+- requiring an internal LLM;
+- installing Kubernetes on a single node without a demonstrated need;
+- running macOS guests on generic non-Apple hardware.
 
-As duas superfícies devem coexistir. Um cliente competente pode operar o nível
-baixo; um cliente simples pode pedir apenas o resultado.
+## Positioning
 
-## 6. Resultado esperado para o usuário
+Xiryn inspired the concept of a disposable Linux workstation per agent. Double
+Agent shifts the center toward shared infrastructure: MCP, hardware inventory,
+multiple runtimes, jobs, recipes, artifacts, and optional delegation. It must
+remain useful even when it runs no model of its own.
 
-Depois da instalação:
+## Language policy
 
-1. o administrador abre a Web UI e conclui o inventário do host;
-2. cadastra provedores de LLM opcionais e políticas;
-3. gera uma chave de cliente;
-4. o comando `double-agent discover` encontra o servidor na LAN;
-5. `double-agent connect <cliente>` grava a configuração MCP ou mostra o trecho
-   a copiar;
-6. o agente lê os recursos de documentação e chama as ferramentas;
-7. o usuário acompanha jobs e instâncias no painel;
-8. os resultados aparecem como artefatos baixáveis ou recursos MCP;
-9. a instância é destruída automaticamente.
-
-## 7. Metas mensuráveis do MVP
-
-- instalação nova até a Web UI em até 15 minutos, sem contar drivers e download
-  de modelos;
-- primeiro container CPU em até 10 segundos após imagem aquecida;
-- anúncio mDNS visível em até 5 segundos na mesma sub-rede;
-- nenhum segredo presente em logs ou respostas MCP;
-- destruição automática confiável após TTL;
-- execução comprovada em pelo menos um dispositivo NVIDIA, um AMD e um Intel;
-- exportação de artefatos maiores que o limite prático do payload MCP;
-- recuperação do plano de controle após reinício sem depender das instâncias
-  efêmeras.
-
-## 8. Não objetivos iniciais
-
-- ser um provedor de nuvem pública;
-- prometer isolamento hostil multi-tenant equivalente a uma cloud;
-- decidir ou adquirir licenças de Windows, aplicações ou modelos pelo usuário;
-- manter discos completos indefinidamente;
-- fazer uma LLM interna ser obrigatória;
-- instalar Kubernetes num único host sem necessidade.
-
-## 9. Posicionamento
-
-O Xiryn inspira o conceito de uma estação Linux descartável por agente. O
-Double Agent desloca o centro do produto para infraestrutura compartilhável:
-servidor MCP, inventário de hardware, múltiplos runtimes, jobs, receitas e
-artefatos. Ele deve funcionar mesmo sem executar um agente próprio.
-
+The product must work for an international audience. English is canonical for
+machine-facing contracts and primary documentation. Human-facing surfaces are
+localizable; Brazilian Portuguese is the first supported translation. See
+[Internationalization](I18N.md).

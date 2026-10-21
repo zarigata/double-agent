@@ -1,16 +1,17 @@
-# Double Agent — licença provisória
+# Double Agent — provisional license notice
 
-Copyright (c) 2026. Todos os direitos reservados.
+Copyright (c) 2026. All rights reserved.
 
-Este repositório está em fase de definição de produto. A presença do código-fonte,
-documentação ou assets neste repositório não concede permissão para copiar,
-modificar, redistribuir, sublicenciar, vender, revender ou oferecer o material
-como serviço.
+This repository is in the product-definition phase. The presence of source
+code, documentation, or assets in this repository does not grant permission to
+copy, modify, redistribute, sublicense, sell, resell, or offer the material as
+a service.
 
-Uso, redistribuição ou exploração comercial exigem autorização prévia e expressa
-do titular dos direitos.
+Use, redistribution, or commercial exploitation requires prior express written
+authorization from the copyright holder.
 
-Uma licença source-available definitiva será adicionada antes do primeiro
-release público, após revisão jurídica. Este aviso provisório não é uma licença
-open source aprovada pela Open Source Initiative.
+A definitive source-available license will be added before the first public
+release after legal review. This provisional notice is not an open-source
+license approved by the Open Source Initiative.
 
+For the Brazilian Portuguese translation, see [LICENSE.pt-BR.md](LICENSE.pt-BR.md).
