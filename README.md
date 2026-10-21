@@ -320,12 +320,12 @@ O agente poderá ser root dentro da instância. Ele não receberá:
 
 ```mermaid
 flowchart LR
-    U[Cliente / LLM<br/>não confiável] -->|TLS + token| P[Gateway + política]
-    P -->|operação validada| R[Runtime privilegiado]
-    R -->|sandbox| I[Instância não confiável]
+    U["Cliente ou LLM"] -->|"TLS e token"| P["Gateway e politica"]
+    P -->|"Operacao validada"| R["Runtime privilegiado"]
+    R -->|"Sandbox"| I["Instancia isolada"]
     P --> V[Cofre]
-    V -. referência opaca .-> I
-    I --> A[Artefatos aprovados]
+    V -.->|"Referencia opaca"| I
+    I --> A["Artefatos aprovados"]
 ```
 
 Mais detalhes em
@@ -381,14 +381,21 @@ flowchart TB
         GP[GPU Adapters]
     end
 
-    CC & CU & CX --> GW
+    CC --> GW
+    CU --> GW
+    CX --> GW
     UI --> GW
-    GW --> AU --> JO --> SC
+    GW --> AU
+    AU --> JO
+    JO --> SC
     JO <--> IA
-    JO --> DB & AR
+    JO --> DB
+    JO --> AR
     AU --> VA
-    SC --> DO & LV
-    DO --> LC --> GP
+    SC --> DO
+    SC --> LV
+    DO --> LC
+    LC --> GP
     LV --> VM
 ```
 
