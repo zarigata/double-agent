@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#06101d" />
+    <!--
+      The daemon injects the CSRF token of the browser session into this tag.
+      The tag stays empty when the interface is opened without a session; the
+      client then takes the token from GET /api/v1/auth/me.
+    -->
+    <meta name="csrf-token" content="" />
+    <title>Double Agent — Control plane</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main" data-i18n="accessibility.skip">Skip to content</a>
+
+    <header class="app-header">
+      <a class="brand" href="#/overview">
+        <span class="brand__mark" aria-hidden="true">◈</span>
+        <span class="brand__name" data-i18n="app.brand">Double Agent</span>
+        <span class="brand__tag" data-i18n="app.tagline">Control plane</span>
+      </a>
+
+      <div class="header-actions">
+        <span class="node-chip" id="node-chip" hidden>
+          <span class="node-chip__dot" aria-hidden="true"></span>
+          <span id="node-chip-text"></span>
+        </span>
+
+        <form class="language-form" data-i18n-aria-label="language.form">
+          <label for="language" data-i18n="language.label">Language</label>
+          <select id="language" name="language">
+            <option value="en">English</option>
+            <option value="pt-BR">Português do Brasil</option>
+          </select>
+        </form>
+
+        <div class="user-menu" id="user-menu" hidden>
+          <button
+            type="button"
+            class="user-menu__button"
+            id="user-menu-button"
+            aria-expanded="false"
+            aria-controls="user-menu-panel"
+            data-i18n-aria-label="app.userMenu"
+          >
+            <span class="user-menu__avatar" aria-hidden="true">◇</span>
+            <span class="user-menu__name" id="user-menu-name"></span>
+          </button>
+          <div
+            class="user-menu__panel"
+            id="user-menu-panel"
+            role="menu"
+            aria-labelledby="user-menu-button"
+            hidden
+          >
+            <p class="user-menu__meta"><span id="user-menu-user"></span></p>
+            <p class="user-menu__meta"><span id="user-menu-role"></span></p>
+            <button
+              type="button"
+              class="button button--ghost button--block"
+              id="sign-out"
+              role="menuitem"
+              data-i18n="app.signOut"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="app-body">
+      <nav class="sidebar" id="sidebar" data-i18n-aria-label="navigation.primary">
+        <ul class="nav-list">
+          <li>
+            <a class="nav-link" href="#/overview" data-nav="overview">
+              <span class="nav-link__icon" aria-hidden="true">◈</span>
+              <span data-i18n="nav.overview">Overview</span>
+            </a>
+          </li>
+          <li>
+            <a class="nav-link" href="#/instances" data-nav="instances">
+              <span class="nav-link__icon" aria-hidden="true">▣</span>
+              <span data-i18n="nav.instances">Instances</span>
+            </a>
+          </li>
+          <li>
+            <a class="nav-link" href="#/jobs" data-nav="jobs">
+              <span class="nav-link__icon" aria-hidden="true">▤</span>
+              <span data-i18n="nav.jobs">Jobs</span>
+            </a>
+          </li>
+          <li>
+            <a class="nav-link" href="#/artifacts" data-nav="artifacts">
+              <span class="nav-link__icon" aria-hidden="true">◆</span>
+              <span data-i18n="nav.artifacts">Artifacts</span>
+            </a>
+          </li>
+          <li>
+            <a class="nav-link" href="#/templates" data-nav="templates">
+              <span class="nav-link__icon" aria-hidden="true">▧</span>
+              <span data-i18n="nav.templates">Templates</span>
+            </a>
+          </li>
+          <li id="nav-admin" hidden>
+            <a class="nav-link" href="#/admin" data-nav="admin">
+              <span class="nav-link__icon" aria-hidden="true">⚿</span>
+              <span data-i18n="nav.admin">Administration</span>
+            </a>
+          </li>
+        </ul>
+        <p class="sidebar__note" data-i18n="sidebar.note">
+          Sessions live in an HttpOnly cookie. Nothing is stored in the browser.
+        </p>
+      </nav>
+
+      <main id="main" class="main" tabindex="-1" data-i18n-aria-label="accessibility.main">
+        <div id="view-root"></div>
+      </main>
+    </div>
+
+    <div
+      id="toasts"
+      class="toasts"
+      role="region"
+      aria-live="polite"
+      aria-atomic="false"
+      data-i18n-aria-label="toast.region"
+    ></div>
+    <div id="modal-root"></div>
+    <div id="language-status" class="sr-only" role="status" aria-live="polite"></div>
+  </body>
+</html>

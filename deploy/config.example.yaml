@@ -1,0 +1,71 @@
+# Double Agent node configuration.
+#
+# Secrets are never written in this file. Use ${VAR} references, which are
+# expanded from the environment of the daemon, or the dedicated environment
+# variables listed in the installation guide.
+
+data_dir: /var/lib/double-agent
+log_level: info
+
+listen:
+  address: 0.0.0.0
+  port: 7443
+  tls:
+    enabled: true
+  # The browser origins allowed to call the API. An empty list rejects every
+  # cross origin request.
+  allowed_origins: []
+
+runtime:
+  default: docker
+
+  docker:
+    host: unix:///var/run/docker.sock
+    pull_images: true
+    # The default egress policy. "none" isolates the instance completely.
+    network: none
+    # Restricts which images may be started. An empty list allows any image.
+    allowed_images: []
+    workspace_root: /var/lib/double-agent/instances
+
+  # The Proxmox VE backend provisions disposable guests by cloning a template.
+  # The password is read from DOUBLE_AGENT_PROXMOX_PASSWORD.
+  proxmox:
+    enabled: false
+    endpoint: https://pve.example:8006
+    username: root@pam
+    insecure: true
+    node: pve
+    storage: local-lvm
+    template_vmid: 111
+    bridge: vmbr0
+    workspace_root: /var/lib/double-agent/instances
+
+  # The host process backend. Development only: it runs the workload as a
+  # local process without isolation.
+  local:
+    enabled: false
+    workspace_root: /var/lib/double-agent/instances
+
+auth:
+  session_ttl: 12h
+  api_key_ttl: 720h
+  bootstrap_admin: admin
+  require_tls: true
+
+limits:
+  max_concurrent_jobs: 4
+  max_instances: 20
+  max_instances_per_user: 5
+  default_ttl: 1h
+  max_ttl: 4h
+
+artifacts:
+  root: /var/lib/double-agent/artifacts
+  max_upload_bytes: 268435456
+  max_size_bytes: 1073741824
+  retention: 168h
+
+discovery:
+  enabled: true
+  instance_name: double-agent
