@@ -129,6 +129,34 @@ func TestCreateRejectsWorkspaceOutsideRoot(t *testing.T) {
 	}
 }
 
+// TestCreateOpensWorkspaceForTheWorkload checks that the workspace of an
+// instance is sticky and writable by everyone.
+//
+// The workload writes as a user that shares neither the owner nor the group
+// of the daemon that created the directory, and with CAP_DAC_OVERRIDE
+// dropped even uid 0 obeys the permission bits. A workspace owned by an
+// unprivileged daemon user (mode 0750) made every write inside a fresh
+// instance fail with EPERM whenever the daemon itself did not run as root.
+func TestCreateOpensWorkspaceForTheWorkload(t *testing.T) {
+	daemon := newFakeDaemon()
+	backend := newTestRuntime(t, daemon, nil)
+	created, err := backend.Create(context.Background(), testSpec())
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	info, err := os.Stat(backend.workspaceFor(created.ID))
+	if err != nil {
+		t.Fatalf("stat the workspace: %v", err)
+	}
+	perm := info.Mode().Perm()
+	if perm&0o002 == 0 {
+		t.Errorf("workspace mode %o is not writable by the workload", perm)
+	}
+	if info.Mode()&os.ModeSticky == 0 {
+		t.Errorf("workspace mode %o carries no sticky bit", perm)
+	}
+}
+
 // TestCreateSelectsNetworkPerEgressPolicy checks the network mode of every
 // egress policy.
 func TestCreateSelectsNetworkPerEgressPolicy(t *testing.T) {

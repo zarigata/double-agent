@@ -598,11 +598,20 @@ func (r *Runtime) buildBinds(spec runtime.InstanceSpec, workspace string) ([]str
 		if err != nil {
 			return nil, err
 		}
-		mode := "rw"
+		// The same permission reasoning as the workspace itself applies:
+		// the workload reaches the mount as a user that shares no identity
+		// with the daemon, so a writable mount is sticky and writable by
+		// everyone and a read-only mount is at least readable by everyone.
+		perm := 0o777 | os.ModeSticky
+		access := "rw"
 		if mount.ReadOnly {
-			mode = "ro"
+			perm = 0o0755
+			access = "ro"
 		}
-		binds = append(binds, source+":"+target+":"+mode)
+		if err := os.Chmod(source, perm); err != nil {
+			return nil, fmt.Errorf("docker: mount %q: %w", mount.Source, err)
+		}
+		binds = append(binds, source+":"+target+":"+access)
 	}
 	return binds, nil
 }
@@ -622,6 +631,20 @@ func (r *Runtime) instanceWorkspace(spec runtime.InstanceSpec) (string, error) {
 	}
 	if err := os.MkdirAll(absolute, 0o750); err != nil {
 		return "", fmt.Errorf("docker: create instance workspace: %w", err)
+	}
+	// The workload writes into its workspace as a user that is neither the
+	// owner nor in the group of the workspace: the daemon may run as an
+	// unprivileged account while the container starts as uid 0 with
+	// CAP_DAC_OVERRIDE dropped, and permission bits then apply to uid 0
+	// like to anybody else. The directory is therefore sticky and writable
+	// by everyone, like /tmp: the sticky bit keeps one instance from
+	// renaming or removing the directory of another.
+	//
+	// The sticky bit travels as os.ModeSticky: the octal bit 0o1000 is not
+	// part of the permission bits of an os.FileMode and would be dropped
+	// silently.
+	if err := os.Chmod(absolute, 0o777|os.ModeSticky); err != nil {
+		return "", fmt.Errorf("docker: open the instance workspace for the workload: %w", err)
 	}
 	return absolute, nil
 }
