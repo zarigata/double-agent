@@ -33,6 +33,11 @@ export function instanceRemaining(instance) {
 }
 
 export function instanceRemainingText(instance) {
+  // An instance that already reached a final state is over: a countdown for
+  // a destroyed or failed instance would promise a lifetime it no longer has.
+  if (instance?.state === "destroyed" || instance?.state === "failed") {
+    return t("instances.inactive");
+  }
   const remaining = instanceRemaining(instance);
   if (remaining === null) return "—";
   if (remaining <= 0) return t("instances.expired");

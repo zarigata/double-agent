@@ -145,6 +145,7 @@
     "destroyConfirm": "Destroy the instance {id} and release its resources? The result is not recoverable.",
     "destroyed": "The instance {id} was destroyed.",
     "expired": "expired",
+    "inactive": "inactive",
     "remaining": "in {time}",
     "latestVersion": "latest",
     "form": {

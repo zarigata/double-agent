@@ -295,6 +295,16 @@ export function openModal(options = {}) {
 export function confirmDialog(options = {}) {
   const { title, message, confirmLabel, onConfirm, tone = "danger" } = options;
   return new Promise((resolve) => {
+    // The promise may be settled more than once: closing the dialog fires the
+    // onClose callback of the modal and the button of the outcome resolves the
+    // promise as well. Only the first resolution counts, so the outcome the
+    // operator chose is always the one that is returned.
+    let settled = false;
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
     const confirmButton = el("button", {
       className: `button button--${tone}`,
       text: confirmLabel || t("common.confirm"),
@@ -309,17 +319,17 @@ export function confirmDialog(options = {}) {
       title,
       body: el("p", { className: "view__subtitle", text: message }),
       footer: [cancelButton, confirmButton],
-      // A dialog that is dismissed is a refusal.
-      onClose: () => resolve(false),
+      // A dialog that is dismissed without an explicit choice is a refusal.
+      onClose: () => settle(false),
     });
 
     cancelButton.addEventListener("click", () => {
       modal.close();
-      resolve(false);
+      settle(false);
     });
     confirmButton.addEventListener("click", () => {
       modal.close();
-      resolve(true);
+      settle(true);
     });
   });
 }

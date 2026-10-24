@@ -145,6 +145,7 @@
     "destroyConfirm": "Destruir a instância {id} e liberar seus recursos? O resultado não pode ser recuperado.",
     "destroyed": "A instância {id} foi destruída.",
     "expired": "expirada",
+    "inactive": "inativa",
     "remaining": "em {time}",
     "latestVersion": "mais recente",
     "form": {
