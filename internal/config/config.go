@@ -351,6 +351,10 @@ func (c *Config) apply() error {
 }
 
 // Validate reports configuration values that cannot work.
+//
+// An enabled runtime is validated completely: a backend that starts without
+// the values it needs fails later, at the first workload, with an error that
+// does not say which line of the configuration is wrong.
 func (c Config) Validate() error {
 	switch c.LogLevel {
 	case "debug", "info", "warn", "error":
@@ -363,8 +367,73 @@ func (c Config) Validate() error {
 	if c.Auth.RequireTLS && !c.Listen.TLS.Enabled {
 		return fmt.Errorf("config: auth.require_tls needs listen.tls.enabled")
 	}
-	if c.Runtime.Local.Enabled {
+	if err := c.Runtime.Proxmox.validate(); err != nil {
+		return err
+	}
+	switch c.Runtime.Default {
+	case "docker":
+	case "proxmox":
+		if !c.Runtime.Proxmox.Enabled {
+			return fmt.Errorf("config: runtime.default is proxmox but runtime.proxmox.enabled is false")
+		}
+	case "local":
+		if !c.Runtime.Local.Enabled {
+			return fmt.Errorf("config: runtime.default is local but runtime.local.enabled is false")
+		}
+	default:
+		return fmt.Errorf("config: runtime.default %q is not a known runtime", c.Runtime.Default)
+	}
+	return nil
+}
+
+// validate reports the values an enabled Proxmox backend cannot work without.
+//
+// The credentials accept either a user name with a password or an API token
+// with its secret; half of a pair is a configuration mistake, not a working
+// setup.
+func (c ProxmoxConfig) validate() error {
+	if !c.Enabled {
 		return nil
+	}
+	if strings.TrimSpace(c.Endpoint) == "" {
+		return fmt.Errorf("config: runtime.proxmox.endpoint is required when the proxmox runtime is enabled")
+	}
+	hasTicket := strings.TrimSpace(c.Username) != "" && c.Password != ""
+	hasToken := strings.TrimSpace(c.TokenID) != "" && c.TokenSecret != ""
+	switch {
+	case hasTicket || hasToken:
+	case strings.TrimSpace(c.Username) != "" && c.Password == "":
+		return fmt.Errorf("config: runtime.proxmox has a username but no password; set the password through %s", EnvProxmoxPassword)
+	case strings.TrimSpace(c.TokenID) != "" && c.TokenSecret == "":
+		return fmt.Errorf("config: runtime.proxmox has a token_id but no token_secret; set the secret through %s", EnvProxmoxTokenSecret)
+	case strings.TrimSpace(c.Username) == "" && c.Password != "":
+		return fmt.Errorf("config: runtime.proxmox has a password but no username")
+	case strings.TrimSpace(c.TokenID) == "" && c.TokenSecret != "":
+		return fmt.Errorf("config: runtime.proxmox has a token_secret but no token_id")
+	default:
+		return fmt.Errorf("config: runtime.proxmox needs credentials: a username with a password or a token_id with a token_secret")
+	}
+	if strings.TrimSpace(c.Node) == "" {
+		return fmt.Errorf("config: runtime.proxmox.node is required when the proxmox runtime is enabled")
+	}
+	if strings.TrimSpace(c.Storage) == "" {
+		return fmt.Errorf("config: runtime.proxmox.storage is required when the proxmox runtime is enabled")
+	}
+	if c.TemplateVMID <= 0 {
+		return fmt.Errorf("config: runtime.proxmox.template_vmid must be a positive guest id")
+	}
+	if len(c.AllowedTemplates) == 0 {
+		return fmt.Errorf("config: runtime.proxmox.allowed_templates must name at least the configured template; an empty list would allow every guest of the node to be cloned")
+	}
+	allowed := false
+	for _, vmid := range c.AllowedTemplates {
+		if vmid == c.TemplateVMID {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return fmt.Errorf("config: runtime.proxmox.allowed_templates must include the configured template_vmid %d", c.TemplateVMID)
 	}
 	return nil
 }

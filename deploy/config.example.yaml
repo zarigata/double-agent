@@ -29,7 +29,10 @@ runtime:
     workspace_root: /var/lib/double-agent/instances
 
   # The Proxmox VE backend provisions disposable guests by cloning a template.
-  # The password is read from DOUBLE_AGENT_PROXMOX_PASSWORD.
+  # The password is read from DOUBLE_AGENT_PROXMOX_PASSWORD, or use an API
+  # token with DOUBLE_AGENT_PROXMOX_TOKEN_ID and
+  # DOUBLE_AGENT_PROXMOX_TOKEN_SECRET. An enabled backend without a complete
+  # credential, endpoint, node, storage or allow list is refused at startup.
   proxmox:
     enabled: false
     endpoint: https://pve.example:8006
@@ -38,6 +41,10 @@ runtime:
     node: pve
     storage: local-lvm
     template_vmid: 111
+    # Only the guests in this list may be cloned, and it must include
+    # template_vmid. An empty list would allow every guest to be cloned and
+    # is refused.
+    allowed_templates: [111]
     bridge: vmbr0
     workspace_root: /var/lib/double-agent/instances
 

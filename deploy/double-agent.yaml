@@ -26,8 +26,8 @@ runtime:
     username: root@pam
     node: pve
     storage: local-lvm
-    template_vmid: 205
-    allowed_templates: [200, 201, 202, 203, 204, 205]
+    template_vmid: 301
+    allowed_templates: [301]
     bridge: vmbr0
     insecure: true
 
