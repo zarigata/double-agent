@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/zarigata/double-agent/internal/artifacts"
@@ -170,7 +171,15 @@ func writeErrorStatus(w http.ResponseWriter, r *http.Request, status int, code C
 }
 
 // writeError answers a request with the envelope of an API error.
+//
+// The wrapped cause never reaches the client, so this is the single place
+// that writes it to the log where an operator can find it through the
+// correlation identifier.
 func (e *Error) write(w http.ResponseWriter, r *http.Request) {
+	if status := statusFor(e.Code); status >= http.StatusInternalServerError {
+		slog.Default().Error("request failed", "code", e.Code, "status", status,
+			"request_id", requestID(r), "path", r.URL.Path, "error", e.Err)
+	}
 	writeError(w, r, e.Code, e.Message, e.Details)
 }
 
