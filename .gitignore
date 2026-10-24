@@ -45,3 +45,5 @@ vendor/
 /double-agent
 *.exe
 
+# Local agent state
+.zcode/
