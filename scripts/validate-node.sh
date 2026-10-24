@@ -157,8 +157,19 @@ section "Artifacts"
 
 r=$(c -w "\n%{http_code}" -X POST "${BASE}/api/v1/instances/${INST}/exec" -H "Content-Type: application/json" \
 	-d '{"argv":["/bin/sh","-c","mkdir -p out && echo artifact-payload > out/report.txt"],"timeout_seconds":30}')
-code=$(echo "$r" | tail -1)
-if [ "$code" = "200" ]; then ok "the file was created inside the instance"; else no "the file was created inside the instance" "HTTP $code"; fi
+code=$(echo "$r" | tail -1); body=$(echo "$r" | head -1)
+exit_code=$(echo "$body" | json 'str(d.get("exit_code",""))' 2>/dev/null)
+if [ "$code" = "200" ] && [ "$exit_code" = "0" ]; then
+	ok "the file was created inside the instance"
+else
+	no "the file was created inside the instance" "HTTP $code exit=$exit_code $body"
+	# Diagnostics: why the workspace refused the write. This is the
+	# information an operator needs when the bind behaves differently on
+	# the host (mount options, permissions, filesystem).
+	r=$(c -w "\n%{http_code}" -X POST "${BASE}/api/v1/instances/${INST}/exec" -H "Content-Type: application/json" \
+		-d '{"argv":["/bin/sh","-c","id; ls -ld /workspace; grep workspace /proc/mounts; touch /workspace/.probe 2>&1; ls -la /workspace"],"timeout_seconds":30}')
+	echo "$r" | head -1 | json "'        diag: ' + repr((d.get('stdout','') + d.get('stderr',''))[:400])" 2>/dev/null
+fi
 
 # Export paths are relative to the workspace of the instance.
 r=$(c -w "\n%{http_code}" -X POST "${BASE}/api/v1/artifacts/export" -H "Content-Type: application/json" \
