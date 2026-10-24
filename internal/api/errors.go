@@ -201,6 +201,8 @@ func classify(err error) *Error {
 		return errorf(CodeNotFound, "the instance does not exist", err)
 	case errors.Is(err, orchestrator.ErrConflict):
 		return errorf(CodeConflict, "the request conflicts with the current state", err)
+	case errors.Is(err, orchestrator.ErrInvalidRequest):
+		return errorf(CodeInvalidRequest, "the request is not valid", err)
 	case errors.Is(err, artifacts.ErrNotFound):
 		return errorf(CodeNotFound, "the artifact does not exist", err)
 	case errors.Is(err, artifacts.ErrTooLarge):
@@ -237,6 +239,8 @@ func classify(err error) *Error {
 		return errorf(CodeCapabilityUnavailable, "the node does not support this operation", err)
 	case errors.Is(err, runtime.ErrUnavailable):
 		return errorf(CodeCapabilityUnavailable, "the runtime backend is not available", err)
+	case errors.Is(err, runtime.ErrAgentUnavailable):
+		return errorf(CodeCapabilityUnavailable, "the guest agent of the instance is not answering; the guest may still be booting or the image carries no agent", err)
 	case errors.Is(err, runtime.ErrNotFound):
 		return errorf(CodeNotFound, "the workload does not exist", err)
 	case errors.Is(err, context.DeadlineExceeded):

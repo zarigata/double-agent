@@ -365,14 +365,18 @@ func Builtin() []Template {
 			Documentation: "Use for multi-step tasks that need apt packages.",
 		},
 		{
-			ID:            "proxmox-linux",
-			Version:       "1.0.0",
-			Title:         "Proxmox Linux Virtual Machine",
-			Description:   "A disposable virtual machine cloned from a Proxmox VE template of the node.",
-			Runtime:       runtime.KindVM,
-			Backend:       "proxmox",
-			Image:         "205",
-			Resources:     runtime.Resources{CPU: 1, MemoryMB: 1024, DiskMB: 8192},
+			ID:          "proxmox-linux",
+			Version:     "1.0.0",
+			Title:       "Proxmox Linux Virtual Machine",
+			Description: "A disposable virtual machine cloned from a Proxmox VE template of the node.",
+			Runtime:     runtime.KindVM,
+			Backend:     "proxmox",
+			// A plain number would name one guest id and freeze the pilot
+			// template into the code, so the sentinel defers to the template
+			// the operator configured: the proxmox backend clones the
+			// runtime.proxmox.template_vmid of the node.
+			Image:     "configured-template",
+			Resources: runtime.Resources{CPU: 1, MemoryMB: 1024, DiskMB: 8192},
 			// The Proxmox backend attaches guests to the host bridge, so the
 			// network of the guest is governed by the host, not by an
 			// allowlist of the control plane.

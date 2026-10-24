@@ -51,6 +51,15 @@ const (
 	// does not ask for one.
 	defaultMaxOutputBytes int64 = 8 << 20
 
+	// defaultAgentReadyTimeout bounds the wait for the guest agent of a
+	// freshly started guest. The agent of a guest that boots under software
+	// emulation needs minutes, not seconds.
+	defaultAgentReadyTimeout = 90 * time.Second
+
+	// agentPollInterval is how often the agent of a guest is pinged while
+	// the backend waits for it.
+	agentPollInterval = 2 * time.Second
+
 	// maxArtifactBytes bounds the size of a file copied out of an
 	// instance.
 	maxArtifactBytes int64 = 1 << 30
@@ -79,7 +88,7 @@ const (
 // The guest agent is the only channel the backend has to run a command
 // inside a guest, so a template without the agent can only be used for a
 // workload that needs no command at all.
-var ErrGuestAgentUnavailable = errors.New("proxmox: the qemu guest agent is not available")
+var ErrGuestAgentUnavailable = fmt.Errorf("%w: proxmox: the qemu guest agent is not available", runtime.ErrAgentUnavailable)
 
 // Config configures the Proxmox VE backend.
 type Config struct {
@@ -129,6 +138,10 @@ type Config struct {
 	// SCSIHW is the SCSI controller of the clone. An empty controller
 	// uses the default of the backend.
 	SCSIHW string
+	// AgentReadyTimeout bounds how long the backend waits for the guest
+	// agent of a freshly started guest before a command is refused. Zero
+	// uses the default of the backend.
+	AgentReadyTimeout time.Duration
 	// HTTPClient overrides the HTTP client that reaches the server. It
 	// is meant for tests and for callers that need custom TLS settings.
 	HTTPClient *http.Client
@@ -149,6 +162,7 @@ type Runtime struct {
 	templateVMID     int
 	allowedTemplates map[int]bool
 	workspaceRoot    string
+	agentReadyWait   time.Duration
 
 	mu        sync.Mutex
 	instances map[string]int
@@ -199,6 +213,10 @@ func New(cfg Config) (*Runtime, error) {
 	for _, vmid := range cfg.AllowedTemplates {
 		allowed[vmid] = true
 	}
+	agentReadyWait := cfg.AgentReadyTimeout
+	if agentReadyWait <= 0 {
+		agentReadyWait = defaultAgentReadyTimeout
+	}
 	return &Runtime{
 		client:           client,
 		node:             client.Node(),
@@ -209,6 +227,7 @@ func New(cfg Config) (*Runtime, error) {
 		templateVMID:     cfg.TemplateVMID,
 		allowedTemplates: allowed,
 		workspaceRoot:    absolute,
+		agentReadyWait:   agentReadyWait,
 		instances:        make(map[string]int),
 	}, nil
 }
@@ -350,12 +369,31 @@ func (r *Runtime) networkDevice() string {
 }
 
 // start starts a guest and waits for the task that starts it.
+//
+// A guest that already runs is left alone: the control plane starts an
+// instance both when it creates it and when it hands it over, and Proxmox,
+// unlike a container engine, refuses to start a running guest.
 func (r *Runtime) start(ctx context.Context, vmid int) error {
+	status, err := r.client.StatusCurrent(ctx, vmid)
+	if err == nil {
+		switch status.Status {
+		case "running", "starting", "prelaunch", "migratepending":
+			return nil
+		}
+	} else if IsNotFound(err) {
+		return fmt.Errorf("proxmox: start guest %d: %w", vmid, err)
+	}
 	upid, err := r.client.Start(ctx, vmid)
 	if err != nil {
 		return fmt.Errorf("proxmox: start guest %d: %w", vmid, err)
 	}
 	if err := r.client.WaitForTask(ctx, upid); err != nil {
+		// Two starts can race: the guest was started between the check above
+		// and this task. A guest that runs now was started, which is all the
+		// caller asked for.
+		if status, stateErr := r.client.StatusCurrent(ctx, vmid); stateErr == nil && status.Status == "running" {
+			return nil
+		}
 		return fmt.Errorf("proxmox: start guest %d: %w", vmid, err)
 	}
 	return nil
@@ -515,6 +553,33 @@ func (r *Runtime) Console(ctx context.Context, id runtime.ID) (runtime.ConsoleEn
 	return runtime.ConsoleEndpoint{}, fmt.Errorf("%w: the proxmox backend has no console endpoint", runtime.ErrNotSupported)
 }
 
+// waitForAgent blocks until the guest agent of a guest answers.
+//
+// A freshly started guest needs time before its agent is up, and the agent is
+// the only channel the backend has, so a command that arrives too early is
+// waited for instead of refused. The wait is bounded: a guest whose agent
+// never answers still produces the error that names the missing piece.
+func (r *Runtime) waitForAgent(ctx context.Context, vmid int) error {
+	deadline := time.Now().Add(r.agentReadyWait)
+	for {
+		err := r.client.AgentPing(ctx, vmid)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, ErrGuestAgentUnavailable) {
+			return err
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("%w: guest %d: the agent did not answer within %s: install qemu-guest-agent in the template and let the guest finish booting", ErrGuestAgentUnavailable, vmid, r.agentReadyWait)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(agentPollInterval):
+		}
+	}
+}
+
 // Exec runs a command inside an instance.
 //
 // The command is run by the guest agent of the guest, so the template has to
@@ -527,6 +592,9 @@ func (r *Runtime) Exec(ctx context.Context, id runtime.ID, req runtime.ExecReque
 	}
 	vmid, err := r.vmid(id)
 	if err != nil {
+		return runtime.ExecHandle{}, err
+	}
+	if err := r.waitForAgent(ctx, vmid); err != nil {
 		return runtime.ExecHandle{}, err
 	}
 	input, err := readInput(req.Stdin)
@@ -692,6 +760,9 @@ func (r *Runtime) CopyOut(ctx context.Context, id runtime.ID, src runtime.GuestP
 
 // run executes a command inside a guest and waits for its outcome.
 func (r *Runtime) run(ctx context.Context, vmid int, argv []string, input string) (runtime.ExecResult, error) {
+	if err := r.waitForAgent(ctx, vmid); err != nil {
+		return runtime.ExecResult{}, err
+	}
 	pid, err := r.client.AgentExec(ctx, vmid, AgentExecRequest{Command: argv, InputData: input})
 	if err != nil {
 		return runtime.ExecResult{}, guestAgentError(vmid, err)

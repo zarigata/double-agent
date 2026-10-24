@@ -745,6 +745,31 @@ func (c *Client) qemuPath(vmid int, suffix string) string {
 	return fmt.Sprintf("/nodes/%s/qemu/%d%s", url.PathEscape(c.node), vmid, suffix)
 }
 
+// AgentPing asks whether the guest agent of a guest answers.
+//
+// The ping is the cheapest call of the agent channel: it carries no command.
+// The server answers with an error while the guest is still booting, which is
+// how a caller waits for the agent to come up.
+func (c *Client) AgentPing(ctx context.Context, vmid int) error {
+	path := c.qemuPath(vmid, "/agent/ping")
+	if err := c.doForm(ctx, http.MethodPost, path, nil, nil, nil); err != nil {
+		return guestPingError(vmid, err)
+	}
+	return nil
+}
+
+// guestPingError explains a failed ping of the guest agent.
+//
+// The server reports a guest that is still booting, a guest without the
+// agent and a guest that is off with different messages; all of them mean the
+// channel is not usable yet.
+func guestPingError(vmid int, err error) error {
+	if isGuestAgentError(err) {
+		return fmt.Errorf("%w: guest %d: the agent does not answer yet: %w", ErrGuestAgentUnavailable, vmid, err)
+	}
+	return err
+}
+
 // taskNode returns the node a task runs on.
 //
 // The identifier of a task carries the node, so a task that was moved to

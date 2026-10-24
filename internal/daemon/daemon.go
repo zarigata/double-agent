@@ -205,13 +205,13 @@ func New(opts Options) (*Daemon, error) {
 	}
 
 	mcpServer, err := mcpsrv.NewServer(orch, mcpsrv.Options{
-		Logger:           log,
-		Store:            st,
-		Registry:         registry,
-		Version:          version.Current().Version,
-		Artifacts:        artifactStore,
+		Logger:            log,
+		Store:             st,
+		Registry:          registry,
+		Version:           version.Current().Version,
+		Artifacts:         artifactStore,
 		ArtifactRetention: cfg.Artifacts.Retention.Duration(),
-		UploadMaxBytes:   cfg.Artifacts.MaxUploadBytes,
+		UploadMaxBytes:    cfg.Artifacts.MaxUploadBytes,
 	})
 	if err != nil {
 		st.Close()
@@ -248,6 +248,18 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 	d.caPath = caPath
 	d.log.Info("certificate authority ready", "ca", caPath)
+
+	// The state a restart interrupted is recovered before the node serves,
+	// so no client observes an orphaned job or a stale instance state.
+	report, err := d.orchestrator.ReconcileAfterRestart(ctx)
+	if err != nil {
+		d.log.Error("reconciliation after restart failed", "error", err)
+	} else if !report.Empty() {
+		d.log.Info("recovered state after restart",
+			"failed_jobs", report.FailedJobs,
+			"failed_instances", report.FailedInstances,
+			"corrected_instances", report.CorrectedInstances)
+	}
 
 	handler := d.buildHandler(certPath, keyPath)
 	addr := fmt.Sprintf("%s:%d", d.cfg.Listen.Address, d.cfg.Listen.Port)
@@ -395,7 +407,13 @@ func (d *Daemon) certificateHosts() []string {
 	}
 	for _, addr := range addrs {
 		ipNet, ok := addr.(*net.IPNet)
-		if !ok || ipNet.IP.IsLoopback() {
+		if !ok {
+			continue
+		}
+		// The loopback address is included: a node bound to 127.0.0.1 is the
+		// safest deployment, and its clients must not be told the certificate
+		// does not match.
+		if ipNet.IP.IsLinkLocalUnicast() || ipNet.IP.IsLinkLocalMulticast() {
 			continue
 		}
 		hosts = append(hosts, ipNet.IP.String())

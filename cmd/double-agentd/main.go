@@ -175,6 +175,13 @@ Flags of "serve":
   --log-level LEVEL         debug, info, warn or error
   --bootstrap-admin NAME    username of the initial administrator
 
+Flags of "doctor":
+  --config PATH             path of the YAML configuration file
+  --data-dir PATH           override the data directory
+  --proxmox-vmid VMID       a running disposable guest (da-) used to verify the
+                            Proxmox guest agent and whether the guest runs with
+                            KVM or under QEMU software emulation
+
 The password of the initial administrator is read from the environment
 variable DOUBLE_AGENT_ADMIN_PASSWORD.
 `)

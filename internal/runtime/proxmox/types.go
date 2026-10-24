@@ -54,8 +54,10 @@ type QemuSummary struct {
 	Status string `json:"status"`
 	// Template marks a guest that serves as a template.
 	Template Flag `json:"template"`
-	// CPU is the usage of the processor of the guest in percent.
-	CPU int `json:"cpu"`
+	// CPU is the usage of the processors of the guest in percent. The server
+	// answers with a fraction, so the field is a float even though the
+	// documentation shows whole numbers.
+	CPU float64 `json:"cpu"`
 	// Cores is the number of cores the guest may use.
 	Cores int `json:"cpus"`
 	// MaxMem is the memory limit of the guest in bytes.

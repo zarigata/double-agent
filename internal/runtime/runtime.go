@@ -20,6 +20,10 @@ var (
 	ErrNotSupported  = errors.New("runtime: operation not supported")
 	ErrUnavailable   = errors.New("runtime: backend unavailable")
 	ErrAlreadyExists = errors.New("runtime: instance already exists")
+	// ErrAgentUnavailable reports that the guest agent channel of an
+	// instance is not usable, for example because the guest is still booting
+	// or the image carries no agent.
+	ErrAgentUnavailable = errors.New("runtime: the guest agent is not available")
 )
 
 // Kind identifies a runtime backend family.
@@ -230,3 +234,45 @@ type Runtime interface {
 	// Health reports whether the backend is usable.
 	Health(ctx context.Context) error
 }
+
+// DoctorChecks is the extended diagnostics surface a backend may offer on top
+// of the plain health probe.
+//
+// The doctor command uses it to verify the pieces a backend needs before the
+// first workload runs, so an operator does not discover a broken template at
+// instance-creation time.
+type DoctorChecks interface {
+	Runtime
+	// CheckTemplate verifies that the clone source the operator configured
+	// exists, really is a template and is allowed by the policy.
+	CheckTemplate(ctx context.Context) error
+	// CheckGuestAgent verifies the readiness of the guest agent channel. A
+	// vmid of zero checks the configuration only; a positive vmid probes a
+	// running, disposable guest of the operator's choice.
+	CheckGuestAgent(ctx context.Context, vmid int) (GuestAgentReport, error)
+}
+
+// GuestAgentReport is what a backend could verify about the readiness of the
+// guest agent channel.
+//
+// The report separates what was proven from what could not be checked: the
+// agent package inside a disk image can only be proven by a running guest.
+type GuestAgentReport struct {
+	// Configured reports that the agent channel is enabled in the
+	// configuration of the template.
+	Configured bool
+	// Answered reports that the agent of a running guest executed a command.
+	Answered bool
+	// VirtType is the virtualization the guest reports: "kvm" for hardware
+	// acceleration, "qemu" for software emulation. Empty when no guest was
+	// probed or the guest could not tell.
+	VirtType string
+	// Detail explains in one sentence what was and was not verified. It
+	// never contains a secret.
+	Detail string
+}
+
+// HardwareAccelerated reports whether the guest runs with hardware
+// acceleration. A guest that could not tell is not accelerated for the
+// purposes of the caller: it must not be used for work that assumes KVM.
+func (r GuestAgentReport) HardwareAccelerated() bool { return r.VirtType == "kvm" }

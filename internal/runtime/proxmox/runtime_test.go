@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/zarigata/double-agent/internal/runtime"
 )
@@ -67,6 +68,14 @@ type fakeProxmox struct {
 	// execOut and execErr are the output the guest agent reports.
 	execOut string
 	execErr string
+	// execAnswers holds a canned answer per program name of a command. It
+	// wins over the global answer, so a test can tell the answers of two
+	// commands of one probe apart.
+	execAnswers map[string]fakeExecAnswer
+	// pidCommand remembers the program a started command runs.
+	pidCommand map[int]string
+	// lastJSON is the parsed JSON body of the request being answered.
+	lastJSON map[string]any
 	// execPolls is the number of polls before a command is reported as
 	// finished.
 	execPolls int
@@ -184,7 +193,8 @@ func (f *fakeProxmox) list() []map[string]any {
 			"name":     guest.Name,
 			"status":   guest.Status,
 			"template": template,
-			"cpu":      1,
+			// The server answers with a fraction of used processor time.
+			"cpu": 0.42,
 		})
 	}
 	return guests
@@ -444,6 +454,43 @@ func TestCreateRefusesDisallowedTemplate(t *testing.T) {
 	}
 }
 
+// TestStartIsIdempotentOnARunningGuest checks that a second start of a guest
+// the backend already started is a no-op: the control plane starts an
+// instance when it creates it and again when it hands it over, and the
+// server, unlike a container engine, refuses to start a running guest.
+func TestStartIsIdempotentOnARunningGuest(t *testing.T) {
+	fake := newFakeProxmox()
+	fake.guests[9005] = &fakeGuest{VMID: 9005, Name: "da-test", Status: "running", Config: map[string]string{}}
+	backend := newTestRuntime(t, fake, nil)
+	if err := backend.Start(context.Background(), "9005"); err != nil {
+		t.Fatalf("start of a running guest: %v", err)
+	}
+	if fake.find(http.MethodPost, "/qemu/9005/status/start") != nil {
+		t.Error("the backend asked the server to start a guest that already runs")
+	}
+}
+
+// TestCreateToleratesTheSecondStart checks that a create whose guest the
+// backend already started does not fail when the control plane starts the
+// instance again.
+func TestCreateToleratesTheSecondStart(t *testing.T) {
+	fake := newFakeProxmox()
+	backend := newTestRuntime(t, fake, nil)
+	ctx := context.Background()
+	instance, err := backend.Create(ctx, testSpec())
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	// The guest runs after the create; the second start of the control plane
+	// must succeed without a task.
+	if err := backend.Start(ctx, instance.Runtime); err != nil {
+		t.Fatalf("second start: %v", err)
+	}
+	if fake.count(http.MethodPost, "/status/start") != 1 {
+		t.Errorf("start calls = %d, want 1", fake.count(http.MethodPost, "/status/start"))
+	}
+}
+
 // TestPrepareChecksTheTemplate checks that only a template of the node is
 // accepted as the source of a clone.
 func TestPrepareChecksTheTemplate(t *testing.T) {
@@ -504,7 +551,11 @@ func TestExecReturnsTheResultOfTheCommand(t *testing.T) {
 func TestExecReportsAMissingGuestAgent(t *testing.T) {
 	fake := newFakeProxmox()
 	fake.agentAvailable = false
-	backend := newTestRuntime(t, fake, nil)
+	// The wait for the agent is short, because the agent of this fake never
+	// answers and the test checks the refusal, not the patience.
+	backend := newTestRuntime(t, fake, func(cfg *Config) {
+		cfg.AgentReadyTimeout = 50 * time.Millisecond
+	})
 	ctx := context.Background()
 	instance, err := backend.Create(ctx, testSpec())
 	if err != nil {
@@ -517,8 +568,41 @@ func TestExecReportsAMissingGuestAgent(t *testing.T) {
 	if !errors.Is(err, ErrGuestAgentUnavailable) {
 		t.Errorf("error %q does not report the missing guest agent", err)
 	}
+	if !errors.Is(err, runtime.ErrAgentUnavailable) {
+		t.Errorf("error %q does not carry the runtime sentinel", err)
+	}
 	if !strings.Contains(err.Error(), "qemu-guest-agent") {
 		t.Errorf("error %q does not say what has to be installed", err)
+	}
+}
+
+// TestExecWaitsForTheAgentToComeUp checks that a command that arrives while
+// the guest is still booting is waited for instead of refused.
+func TestExecWaitsForTheAgentToComeUp(t *testing.T) {
+	fake := newFakeProxmox()
+	fake.agentAvailable = false
+	backend := newTestRuntime(t, fake, func(cfg *Config) {
+		cfg.AgentReadyTimeout = 5 * time.Second
+	})
+	ctx := context.Background()
+	instance, err := backend.Create(ctx, testSpec())
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	// The agent comes up shortly after the first ping.
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		fake.mu.Lock()
+		fake.agentAvailable = true
+		fake.mu.Unlock()
+	}()
+	handle, err := backend.Exec(ctx, instance.Runtime, runtime.ExecRequest{Argv: []string{"true"}})
+	if err != nil {
+		t.Fatalf("exec after the agent came up: %v", err)
+	}
+	result := <-handle.Done
+	if result.ExitCode != 0 {
+		t.Errorf("exit code = %d, want 0", result.ExitCode)
 	}
 }
 
@@ -643,6 +727,9 @@ func (f *fakeProxmox) record(r *http.Request) map[string]any {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.requests = append(f.requests, request)
+	// The body of a request can be read once, so the parsed document is
+	// remembered for the handlers that need it.
+	f.lastJSON = request.Body
 	return request.Body
 }
 
@@ -789,6 +876,12 @@ func (f *fakeProxmox) handleStatus(w http.ResponseWriter, r *http.Request, vmid 
 	}
 }
 
+// fakeExecAnswer is a canned answer of the guest agent for one program.
+type fakeExecAnswer struct {
+	out  string
+	code int
+}
+
 // handleAgent answers the calls of the guest agent.
 func (f *fakeProxmox) handleAgent(w http.ResponseWriter, r *http.Request, vmid int) {
 	f.mu.Lock()
@@ -798,9 +891,20 @@ func (f *fakeProxmox) handleAgent(w http.ResponseWriter, r *http.Request, vmid i
 		return
 	}
 	switch {
+	case strings.HasSuffix(r.URL.Path, "/agent/ping"):
+		if !f.agentAvailable {
+			f.writeError(w, http.StatusInternalServerError, "QEMU guest agent is not running")
+			return
+		}
+		f.writeData(w, map[string]any{})
 	case strings.HasSuffix(r.URL.Path, "/exec"):
 		f.execPIDs++
-		f.writeData(w, map[string]any{"pid": 1000 + f.execPIDs})
+		pid := 1000 + f.execPIDs
+		if f.pidCommand == nil {
+			f.pidCommand = map[int]string{}
+		}
+		f.pidCommand[pid] = agentProgram(f)
+		f.writeData(w, map[string]any{"pid": pid})
 	case strings.HasSuffix(r.URL.Path, "/exec-status"):
 		pid, _ := strconv.Atoi(r.URL.Query().Get("pid"))
 		f.execPollsByPID[pid]++
@@ -808,13 +912,31 @@ func (f *fakeProxmox) handleAgent(w http.ResponseWriter, r *http.Request, vmid i
 			f.writeData(w, map[string]any{"exited": 0})
 			return
 		}
+		out, code := f.execOut, f.execExitCode
+		if program, ok := f.pidCommand[pid]; ok {
+			if answer, ok := f.execAnswers[program]; ok {
+				out, code = answer.out, answer.code
+			}
+		}
 		f.writeData(w, map[string]any{
 			"exited":   1,
-			"exitcode": f.execExitCode,
-			"out-data": f.execOut,
+			"exitcode": code,
+			"out-data": out,
 			"err-data": f.execErr,
 		})
 	default:
 		f.writeError(w, http.StatusNotFound, "no such endpoint")
 	}
+}
+
+// agentProgram returns the program a command of the guest agent runs. It
+// reads the parsed body of the request, because the stream was consumed while
+// the request was recorded.
+func agentProgram(f *fakeProxmox) string {
+	command, ok := f.lastJSON["command"].([]any)
+	if !ok || len(command) == 0 {
+		return ""
+	}
+	program, _ := command[0].(string)
+	return program
 }
