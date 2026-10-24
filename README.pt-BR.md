@@ -8,7 +8,7 @@
 
 ### Duas inteligências. Uma infraestrutura. Ambientes infinitamente descartáveis.
 
-[![Status](https://img.shields.io/badge/status-design%20phase-0b1026?style=for-the-badge&labelColor=111936)](#estado-do-projeto)
+[![Status](https://img.shields.io/badge/status-pre--release-0b1026?style=for-the-badge&labelColor=111936)](#estado-do-projeto)
 [![MCP](https://img.shields.io/badge/interface-MCP-20c8f6?style=for-the-badge&labelColor=111936)](docs/pt-BR/MCP_API_AND_DISCOVERY.md)
 [![Linux](https://img.shields.io/badge/host-Linux-f4c95d?style=for-the-badge&labelColor=111936)](docs/pt-BR/INSTALLATION_AND_OPERATIONS.md)
 [![GPU](https://img.shields.io/badge/GPU-NVIDIA%20%7C%20AMD%20%7C%20Intel-39d98a?style=for-the-badge&labelColor=111936)](docs/pt-BR/RUNTIMES_GPU_AND_TEMPLATES.md)
@@ -24,16 +24,20 @@ que fez o pedido — sem ocupar a máquina principal do desenvolvedor.
 [Arquitetura](docs/pt-BR/ARCHITECTURE.md) ·
 [MCP](docs/pt-BR/MCP_API_AND_DISCOVERY.md) ·
 [GPUs e runtimes](docs/pt-BR/RUNTIMES_GPU_AND_TEMPLATES.md) ·
-[Roadmap](docs/pt-BR/MVP_ROADMAP_AND_TEST_PLAN.md)
+[Roadmap](docs/pt-BR/MVP_ROADMAP_AND_TEST_PLAN.md) ·
+[Checklist de piloto (em inglês)](docs/PILOT_READINESS.md)
 
 </div>
 
 <img src="assets/double-agent-hero.png" alt="Um agente solicita trabalho ao Double Agent, que distribui tarefas entre containers, VMs e GPUs e devolve artefatos" width="100%" />
 
 > [!IMPORTANT]
-> **Double Agent está em fase de arquitetura.** Este repositório contém a
-> especificação do produto; os comandos e endpoints apresentados são contratos
-> planejados e ainda não representam uma versão instalável.
+> **Double Agent é um control plane pré-release ainda não validado.** O
+> repositório já inclui daemon em Go, servidor MCP, interface Web, runtime
+> Docker e runtime de VMs Proxmox. Esses caminhos existem no código, mas ainda
+> não há validação registrada em host limpo, Proxmox real ou hardware. Não use
+> como infraestrutura de produção; siga a
+> [checklist de piloto](docs/PILOT_READINESS.md) primeiro.
 
 ---
 
@@ -474,15 +478,15 @@ As questões ainda abertas estão em
 
 ```text
 Produto e arquitetura      ████████████████████  documentados
-Protocolos e segurança     ████████████████████  especificados
+Control plane e MCP        ████████████████████  implementados; validação pendente
+Docker e Proxmox           ████████████████████  implementados; teste real pendente
 Provas de hardware         ░░░░░░░░░░░░░░░░░░░░  próximas
-Implementação              ░░░░░░░░░░░░░░░░░░░░  não iniciada
 Release MVP                ░░░░░░░░░░░░░░░░░░░░  futura
 ```
 
-Este repositório começa deliberadamente pela especificação. Compatibilidade com
-GPU, isolamento e lifecycle serão comprovados antes de virarem promessas de
-produto.
+O repositório combina uma implementação inicial com a especificação do produto.
+Compatibilidade com GPU, isolamento, ciclo de vida e implantação limpa precisam
+ser comprovados antes de virarem promessas de produto.
 
 ## Marca e assets
 

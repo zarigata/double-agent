@@ -32,7 +32,7 @@ Pairing flow:
 - Return machine-readable error codes plus actionable English messages.
 - Require an explicit locale only for human-facing output.
 
-## Planned tools
+## Implemented MCP tools (current control plane)
 
 ### Discovery and inventory
 
@@ -61,18 +61,24 @@ Pairing flow:
 ### Jobs and desktops
 
 - `job.get`
+- `job.list`
 - `job.cancel`
 - `job.logs`
 - `desktop.open`
 - `desktop.close`
 
-### Intent-level work
+### Planned intent-level tools
 
 - `image.generate`
 - `blender.create_asset`
 - `software.test`
 - `browser.perform_task`
 - `task.delegate`
+
+The implemented server deliberately returns `capability_unavailable` for
+desktop operations until a desktop runtime is validated. Intent-level tools
+are not registered yet: clients must compose the current instance, command,
+job, upload, and artifact tools instead of assuming these names exist.
 
 ## Example: create an instance
 

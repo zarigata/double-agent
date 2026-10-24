@@ -20,16 +20,18 @@ requesting agent—without occupying the developer's primary computer.
 
 [Vision](docs/VISION_AND_SCOPE.md) · [Architecture](docs/ARCHITECTURE.md) ·
 [MCP](docs/MCP_API_AND_DISCOVERY.md) · [GPU and runtimes](docs/RUNTIMES_GPU_AND_TEMPLATES.md) ·
-[Roadmap](docs/MVP_ROADMAP_AND_TEST_PLAN.md) · [Português](README.pt-BR.md)
+[Roadmap](docs/MVP_ROADMAP_AND_TEST_PLAN.md) · [Build plan](docs/BUILD_PLAN.md) · [Pilot checklist](docs/PILOT_READINESS.md) · [Português](README.pt-BR.md)
 
 </div>
 
 <img src="assets/double-agent-hero.png" alt="An agent asks Double Agent to distribute work across containers, VMs, and GPUs and return artifacts" width="100%" />
 
 > [!IMPORTANT]
-> **Double Agent is in the architecture phase.** This repository currently
-> contains the product specification and a multilingual Web preview. Commands
-> and endpoints described below are planned contracts, not a production release.
+> **Double Agent is an unvalidated pre-release control plane.** The repository
+> now includes a Go daemon, MCP server, Web UI, Docker runtime, and Proxmox VM
+> runtime. These are implemented code paths, but no clean-host, real-Proxmox,
+> or hardware validation has been recorded yet. Do not treat it as production
+> infrastructure; use the [pilot checklist](docs/PILOT_READINESS.md) first.
 
 ---
 
@@ -351,19 +353,21 @@ node web/test-i18n.mjs
 
 | Phase | Outcome | Status |
 |---|---|---|
-| 0 | Hardware probes and technical proofs | Planned |
-| 1 | CPU vertical slice, installer, MCP, artifacts | Planned |
+| 0 | Hardware probes and technical proofs | Not yet evidenced on a target host |
+| 1 | CPU vertical slice, MCP, artifacts | Implemented in code; environment validation pending |
 | 2 | NVIDIA, AMD, and Intel GPU support | Planned |
 | 3 | Desktop and browser workers | Planned |
 | 4 | Optional internal AI and delegation | Planned |
-| 5 | Linux and Windows VMs | Planned |
+| 5 | Linux VM lifecycle through Proxmox | Implemented in code; target validation pending |
+| 5 | Windows VM workflow and VFIO | Planned |
 | 6 | Hardened MVP release | Planned |
 
 ## Project status
 
-The repository is a product and architecture foundation. It is ready for
-technical spikes, hardware inventory, threat modeling, and implementation
-planning. It is not yet ready to install on a production server.
+The repository is an early implementation plus its product specification. It
+is ready for a controlled single-host pilot after the documented checks pass.
+It is not yet ready to install on a production server or expose to the
+internet.
 
 ## License
 
