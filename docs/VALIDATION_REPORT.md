@@ -180,21 +180,50 @@ the development Mac.
 
 - The Docker evidence comes from a development Mac, not a clean supported
   Linux host, and from Docker Desktop rather than a server Docker Engine.
+  The Mac evidence is now backed by CI: run
+  [40100674485](https://github.com/zarigata/double-agent/actions/runs/40100674485)
+  (2026-10-24, `ubuntu-latest`, server Docker Engine) validated the full
+  Docker lifecycle 25 of 25 twice with no leaked containers.
 - The Proxmox run used `root@pam` with `insecure: true` over the trusted LAN
   (the bootstrap-only posture of `deploy/double-agent.yaml`); the pilot docs
   still ask for a least-privilege API token and the Proxmox CA installed.
 - The Proxmox test script's own export acceptance missed HTTP 201 during the
   recorded run (the operations succeeded; the list is fixed, a fully green
   script run is still pending on a host whose guests boot faster).
-- The CI workflow has not run on GitHub yet; its first green run is the
-  remaining CI evidence.
+- The CI workflow's first runs are green (Go with `-race`, docs, locales,
+  GitGuardian, Docker smoke twice). The Proxmox CI job still needs a
+  self-hosted runner and credentials before it can run.
 - Backup/restore and token revocation were not exercised live (existing unit
   tests cover them; the operations plan still asks for a live exercise).
 
+## What the first clean-host CI runs found and fixed (2026-10-24)
+
+1. The `internal/artifacts` package was never in version control: the
+   `.gitignore` pattern `artifacts/` matched the package directory. The
+   patterns are anchored to the repository root now.
+2. A data directory that did not exist yet could not be resolved
+   (`EvalSymlinks` answers `NotExist` for a missing final component), so the
+   first start of a node kept the unresolved spelling and, on systems where
+   the path crosses a symlink, every instance create failed as an apparent
+   workspace escape. The directory is created before it is resolved.
+3. With `CAP_DAC_OVERRIDE` dropped, the container's uid 0 obeys the
+   permission bits, and the workspace directory belongs to the account of
+   the daemon. On the runner, where the daemon runs unprivileged, every
+   write inside a fresh instance failed with `EPERM` and the export
+   answered 404; a root daemon (Docker Desktop) never showed the failure.
+   The workspace and the writable recipe mounts are sticky and writable by
+   everyone now, like `/tmp`.
+4. The cause of a 500 answer was never written to the log; every answer of
+   500 or worse logs its cause with the correlation identifier now.
+5. `validate-node.sh` accepted any HTTP 200 from an exec even when the
+   command inside the instance had failed; it requires `exit_code 0` now
+   and dumps workspace mount and permission diagnostics when a write fails.
+
 ## Remaining blockers before phase 4 work
 
-1. One clean supported Linux host for the same Docker lifecycle and a clean
-   install.
-2. Push of the CI workflow and retention of its first green run.
-3. A Proxmox API token with the least privilege the plan asks for, replacing
-   the `root@pam` bootstrap credential.
+1. A self-hosted clean supported Linux host (or an accepted standing
+   decision that the CI runner is the clean-host evidence) for the same
+   Docker lifecycle through a real installation.
+2. A Proxmox API token with the least privilege the plan asks for, replacing
+   the `root@pam` bootstrap credential, plus the self-hosted runner and the
+   `proxmox` environment for the manual CI job.

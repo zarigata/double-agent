@@ -19,7 +19,7 @@ acceptance evidence is saved.
 | Proxmox runtime | Lifecycle validated on the target host on 2026-10-22: clone, guest-agent exec, artifact export and destroy, twice; doctor checks and KVM/QEMU detection answered correctly |
 | Proxmox smoke | The earlier smoke guest `302` no longer exists; live guest-agent checks now target any running `da-` guest |
 | Virtualization | KVM is unavailable on this host; the template itself sets `kvm: 0`, and the doctor confirms a guest runs under QEMU software emulation. A Debian-13 genericcloud clone needs roughly 18–25 minutes of first boot before its guest agent answers |
-| CI | Workflow added for Go tests, docs, locales, and a Docker lifecycle smoke test; the Proxmox lifecycle runs on demand on a self-hosted runner. First recorded green run still pending |
+| CI | Workflow green on GitHub since 2026-10-24 ([run 40100674485](https://github.com/zarigata/double-agent/actions/runs/40100674485)): Go vet/test/build with `-race`, docs and locale checks, GitGuardian, and the Docker lifecycle smoke test twice on a clean `ubuntu-latest` host (25 of 25 per pass, no leaked containers). The Proxmox lifecycle job runs on demand on a self-hosted runner once the `proxmox` environment exists |
 | Configuration guard | An enabled Proxmox runtime without complete credentials, endpoint, node, storage, or an allow list that includes the template is refused at startup |
 
 The absence of KVM makes this host unsuitable for performance, GPU, desktop,
@@ -40,6 +40,11 @@ artifact, and guest-agent tests.
 
 **Gate:** an authenticated client can create, execute in, export from, and
 destroy a Docker instance twice in succession, with no leaked resources.
+Met on 2026-10-24 by the CI Docker smoke job on a clean `ubuntu-latest`
+runner (run
+[40100674485](https://github.com/zarigata/double-agent/actions/runs/40100674485));
+the same lifecycle also passes on the development machine. The clean-host
+install path (installer, systemd units) remains part of phase 3.
 
 ### 2. Prove the Proxmox runtime
 

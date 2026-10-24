@@ -15,8 +15,13 @@ development Mac, and the Docker lifecycle — create, exec, upload, export,
 destroy, TTL cleanup, and reconciliation after a restart — was demonstrated
 twice in a row there (see the [validation report](VALIDATION_REPORT.md) for
 commands and output). The Proxmox lifecycle ran twice on the target host the
-same day with the same outcome. A clean, supported Linux host has not run it
-yet.
+same day with the same outcome. Since 2026-10-24 the same lifecycle runs in
+CI on every pull request, on a clean `ubuntu-latest` host with a server
+Docker Engine, twice per run with a leaked-resource check — the first green
+runs recorded three clean-host defects (an untracked package, a
+first-start symlink failure and a workspace permission failure) that a root
+daemon on a development machine had hidden; all three are fixed and
+documented in the validation report.
 
 The configuration now fails fast: an enabled Proxmox runtime without complete
 credentials, endpoint, node, storage, or an allow list that includes the
