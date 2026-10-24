@@ -85,6 +85,12 @@ func New(opts Options) (*Daemon, error) {
 	// /private/var) the two would disagree and every instance would be
 	// rejected as escaping its workspace. Resolving once, here, keeps the
 	// whole process on a single spelling of the path.
+	//
+	// The directory is created first: a data directory that does not exist
+	// yet cannot be resolved, and keeping its unresolved spelling would
+	// break the very first start of a node (EvalSymlinks answers NotExist
+	// for a missing final component).
+	os.MkdirAll(cfg.DataDir, 0o750)
 	if resolved, err := filepath.EvalSymlinks(cfg.DataDir); err == nil {
 		cfg.DataDir = resolved
 	} else if !os.IsNotExist(err) {
