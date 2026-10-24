@@ -1,0 +1,57 @@
+# Double Agent node configuration.
+#
+# Secrets never belong in this file. The Proxmox password is read from the
+# environment variable DOUBLE_AGENT_PROXMOX_PASSWORD.
+
+data_dir: /var/lib/double-agent
+log_level: info
+
+listen:
+  address: 0.0.0.0
+  port: 7443
+  tls:
+    enabled: true
+  allowed_origins: []
+
+runtime:
+  default: docker
+  docker:
+    host: unix:///var/run/docker.sock
+    pull_images: true
+    network: none
+    allowed_images: []
+  proxmox:
+    enabled: true
+    endpoint: https://192.168.1.79:8006
+    username: root@pam
+    node: pve
+    storage: local-lvm
+    template_vmid: 301
+    allowed_templates: [301]
+    bridge: vmbr0
+    insecure: true
+
+auth:
+  session_ttl: 12h
+  api_key_ttl: 720h
+  bootstrap_admin: admin
+  require_tls: true
+
+limits:
+  host_reserve:
+    cpu: 1
+    memory_mb: 1024
+  max_concurrent_jobs: 4
+  max_instances: 20
+  max_instances_per_user: 5
+  default_ttl: 1h
+  max_ttl: 4h
+
+artifacts:
+  max_upload_bytes: 268435456
+  max_size_bytes: 1073741824
+  retention: 168h
+
+discovery:
+  enabled: true
+  instance_name: double-agent

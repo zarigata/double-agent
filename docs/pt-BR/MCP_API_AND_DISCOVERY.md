@@ -1,5 +1,11 @@
 # API MCP e descoberta na rede
 
+> **Estado atual:** o servidor MCP e as ferramentas fundamentais de instância,
+> job, upload e artefato existem no código. Ferramentas de intenção, como
+> `task.delegate` e `image.generate`, ainda são planejadas. Consulte a
+> [checklist de piloto em inglês](../PILOT_READINESS.md) antes de assumir que
+> um runtime ou host foi validado.
+
 ## 1. Objetivo
 
 O MCP deve expor uma superfície pequena, previsível e autoconsultável. O agente

@@ -1,0 +1,157 @@
+# Continuous integration for the Double Agent control plane.
+#
+# The jobs mirror the checks of docs/BUILD_PLAN.md:
+#   - go            builds the daemon and runs the test suite;
+#   - docs          validates the Markdown links and the Web locales;
+#   - docker-smoke  runs a complete container lifecycle against a temporary
+#                   node, twice, and checks that no resources leak;
+#   - proxmox       manual job for a self-hosted runner in front of a
+#                   disposable Proxmox test guest (workflow_dispatch only).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go build and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test -race ./...
+      - name: Build
+        run: |
+          go build -o build/double-agentd ./cmd/double-agentd
+          go build -o build/double-agent ./cmd/double-agent
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: build/
+          retention-days: 7
+
+  docs:
+    name: Documentation and locales
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Markdown links
+        run: node scripts/check-docs.mjs
+      - name: Locale catalogs (preview)
+        run: node web/test-i18n.mjs
+      - name: Locale catalogs (application)
+        run: node scripts/test-i18n-app.mjs
+
+  docker-smoke:
+    name: Docker lifecycle smoke test
+    runs-on: ubuntu-latest
+    needs: [go, docs]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build the daemon
+        run: go build -o build/double-agentd ./cmd/double-agentd
+      - name: Run the node
+        env:
+          DOUBLE_AGENT_ADMIN_PASSWORD: smoke-test-password
+        run: |
+          mkdir -p "$RUNNER_TEMP/node"
+          cat > "$RUNNER_TEMP/node/config.yaml" <<'YAML'
+          data_dir: DATA_DIR_PLACEHOLDER
+          log_level: info
+          listen:
+            address: 127.0.0.1
+            port: 7443
+            tls:
+              enabled: true
+          runtime:
+            default: docker
+            docker:
+              host: unix:///var/run/docker.sock
+              pull_images: true
+              network: none
+          discovery:
+            enabled: false
+          YAML
+          sed -i "s|DATA_DIR_PLACEHOLDER|$RUNNER_TEMP/node/data|" "$RUNNER_TEMP/node/config.yaml"
+          nohup build/double-agentd serve --config "$RUNNER_TEMP/node/config.yaml" > "$RUNNER_TEMP/node/daemon.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/node/pid"
+          for _ in $(seq 1 60); do
+            curl -sk -o /dev/null "https://127.0.0.1:7443/api/v1/healthz" && break
+            sleep 1
+          done
+          curl -sk -o /dev/null "https://127.0.0.1:7443/api/v1/healthz"
+      - name: Validate the node (pass 1)
+        run: scripts/validate-node.sh https://127.0.0.1:7443 "$DOUBLE_AGENT_ADMIN_PASSWORD"
+        env:
+          DOUBLE_AGENT_ADMIN_PASSWORD: smoke-test-password
+      - name: Validate the node (pass 2)
+        run: scripts/validate-node.sh https://127.0.0.1:7443 "$DOUBLE_AGENT_ADMIN_PASSWORD"
+        env:
+          DOUBLE_AGENT_ADMIN_PASSWORD: smoke-test-password
+      - name: Check for leaked resources
+        if: always()
+        run: |
+          leaks=$(docker ps -a --filter 'label=double-agent.instance' --format '{{.ID}} {{.Names}}')
+          if [ -n "$leaks" ]; then
+            echo "leaked containers:"
+            echo "$leaks"
+            exit 1
+          fi
+          echo "no leaked containers"
+      - name: Stop the node
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/node/pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/node/pid")" 2>/dev/null || true
+          fi
+      - name: Daemon log
+        if: always()
+        run: cat "$RUNNER_TEMP/node/daemon.log" || true
+
+  # Manual, hardware-dependent job. It never runs on a pull request: it needs
+  # a self-hosted runner labelled "proxmox" that can reach a Proxmox VE node
+  # with a disposable test template, plus the credentials in the environment
+  # "proxmox". Follow docs/PROXMOX_TEST_PLAN.md before the first run.
+  proxmox:
+    name: Proxmox lifecycle (manual)
+    runs-on: [self-hosted, proxmox]
+    if: github.event_name == 'workflow_dispatch'
+    needs: [go, docs]
+    environment: proxmox
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build the daemon
+        run: go build -o build/double-agentd ./cmd/double-agentd
+      - name: Run the disposable-guest lifecycle
+        run: scripts/proxmox-lifecycle-test.sh
+        env:
+          DOUBLE_AGENT_PROXMOX_ENDPOINT: ${{ vars.DOUBLE_AGENT_PROXMOX_ENDPOINT }}
+          DOUBLE_AGENT_PROXMOX_NODE: ${{ vars.DOUBLE_AGENT_PROXMOX_NODE }}
+          DOUBLE_AGENT_PROXMOX_STORAGE: ${{ vars.DOUBLE_AGENT_PROXMOX_STORAGE }}
+          DOUBLE_AGENT_PROXMOX_TEMPLATE_VMID: ${{ vars.DOUBLE_AGENT_PROXMOX_TEMPLATE_VMID }}
+          DOUBLE_AGENT_ADMIN_PASSWORD: ${{ secrets.DOUBLE_AGENT_ADMIN_PASSWORD }}
+          DOUBLE_AGENT_PROXMOX_PASSWORD: ${{ secrets.DOUBLE_AGENT_PROXMOX_PASSWORD }}
+          DOUBLE_AGENT_PROXMOX_TOKEN_ID: ${{ vars.DOUBLE_AGENT_PROXMOX_TOKEN_ID }}
+          DOUBLE_AGENT_PROXMOX_TOKEN_SECRET: ${{ secrets.DOUBLE_AGENT_PROXMOX_TOKEN_SECRET }}

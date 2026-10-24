@@ -12,27 +12,38 @@ Thumbs.db
 !.env.example
 *.pem
 *.key
-secrets/
+/secrets/
 
-# Runtime state
-data/
-state/
-cache/
-artifacts/
-workspaces/
+# Runtime state (root of the data directory only; anchored so package
+# directories such as internal/artifacts are never ignored)
+/data/
+/state/
+/cache/
+/artifacts/
+/workspaces/
 *.db
 *.db-shm
 *.db-wal
 
 # Logs and temporary files
 *.log
-tmp/
-.tmp/
+/tmp/
+/.tmp/
 
-# Build output — future implementation
-dist/
-build/
-coverage/
+# Build output
+/dist/
+/build/
+/coverage/
 node_modules/
 vendor/
 
+# Local agent state
+.claude/
+
+# Go build artifacts
+/double-agentd
+/double-agent
+*.exe
+
+# Local agent state
+.zcode/

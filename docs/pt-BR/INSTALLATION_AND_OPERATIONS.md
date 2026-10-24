@@ -1,5 +1,9 @@
 # Instalação e operação
 
+> **Estado atual:** o instalador de release descrito neste documento ainda não
+> está presente no repositório. Para a validação manual da implementação atual,
+> siga a [checklist de piloto em inglês](../PILOT_READINESS.md).
+
 ## 1. Experiência desejada
 
 O usuário executa uma linha em um host Linux limpo:

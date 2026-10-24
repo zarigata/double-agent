@@ -1,5 +1,9 @@
 # Installation and operations
 
+> **Current state:** this document describes the intended release installer.
+> It is not present in this repository yet. Follow
+> [Pilot readiness](PILOT_READINESS.md) for the current manual validation path.
+
 ## Supported host profile
 
 The initial target is a dedicated x86_64 Linux server or workstation with
@@ -11,7 +15,7 @@ Minimum development profile:
 - 4 CPU cores, 16 GB RAM, and 100 GB free storage;
 - systemd and cgroups v2;
 - Docker Engine for container workloads;
-- KVM/libvirt for VM workloads;
+- Proxmox VE 8+ for the currently implemented VM backend;
 - optional NVIDIA, AMD, or Intel GPU with a compatible host driver.
 
 ## One-line installation goal
@@ -31,7 +35,7 @@ release and source, and support an offline/manual package path.
 3. install the signed daemon, CLI, embedded Web UI, and service units;
 4. prompt for the first administrator username and password;
 5. generate a local CA, server certificate, and recovery material;
-6. detect Docker, KVM/libvirt, and GPU devices;
+6. detect Docker, Proxmox/KVM, and GPU devices;
 7. ask before installing or changing any runtime/driver dependency;
 8. run capability smoke tests;
 9. start the service and print URL, fingerprint, and next steps.
